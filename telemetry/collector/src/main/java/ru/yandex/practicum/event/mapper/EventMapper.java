@@ -2,6 +2,8 @@ package ru.yandex.practicum.event.mapper;
 
 import org.apache.avro.specific.SpecificRecordBase;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.event.mapper.hub.HubEventConverter;
+import ru.yandex.practicum.event.mapper.sensor.SensorEventConverter;
 import ru.yandex.practicum.event.model.hub_event.HubEvent;
 import ru.yandex.practicum.event.model.sensor_event.SensorEvent;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;

@@ -3,7 +3,6 @@ package ru.yandex.practicum.event.mapper.sensor;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.event.model.sensor_event.ClimateSensorEvent;
 import ru.yandex.practicum.event.model.sensor_event.SensorEvent;
-import ru.yandex.practicum.event.mapper.SensorEventConverter;
 import ru.yandex.practicum.kafka.telemetry.event.ClimateSensorAvro;
 import org.apache.avro.specific.SpecificRecordBase;
 

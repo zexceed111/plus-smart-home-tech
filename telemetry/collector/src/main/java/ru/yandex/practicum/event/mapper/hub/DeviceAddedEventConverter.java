@@ -2,7 +2,6 @@ package ru.yandex.practicum.event.mapper.hub;
 
 import org.apache.avro.specific.SpecificRecordBase;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.event.mapper.HubEventConverter;
 import ru.yandex.practicum.event.model.hub_event.HubEvent;
 import ru.yandex.practicum.event.model.hub_event.device.DeviceAddedEvent;
 import ru.yandex.practicum.kafka.telemetry.event.DeviceAddedEventAvro;

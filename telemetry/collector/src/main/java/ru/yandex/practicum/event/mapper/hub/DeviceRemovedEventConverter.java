@@ -1,7 +1,6 @@
 package ru.yandex.practicum.event.mapper.hub;
 
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.event.mapper.HubEventConverter;
 import ru.yandex.practicum.event.model.hub_event.HubEvent;
 import ru.yandex.practicum.event.model.hub_event.device.DeviceRemovedEvent;
 import ru.yandex.practicum.kafka.telemetry.event.DeviceRemovedEventAvro;

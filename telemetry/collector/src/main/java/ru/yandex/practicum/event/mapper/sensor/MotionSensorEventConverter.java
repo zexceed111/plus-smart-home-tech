@@ -4,7 +4,6 @@ import org.apache.avro.specific.SpecificRecordBase;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.event.model.sensor_event.MotionSensorEvent;
 import ru.yandex.practicum.event.model.sensor_event.SensorEvent;
-import ru.yandex.practicum.event.mapper.SensorEventConverter;
 import ru.yandex.practicum.kafka.telemetry.event.MotionSensorAvro;
 
 @Component
