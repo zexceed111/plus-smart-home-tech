@@ -30,7 +30,7 @@ public class EventController {
 
     @PostMapping("/hubs")
     public void collectHubEvent(@Valid @RequestBody HubEvent event) {
-        log.info("Поступил запрос Post /events/hubs с телом = {}", event);
+        log.debug("Поступил запрос Post /events/hubs с телом = {}", event);
         service.sendHubEvent(event);
         log.info("Выполнен запрос Post /events/hubs с телом = {}", event);
     }
