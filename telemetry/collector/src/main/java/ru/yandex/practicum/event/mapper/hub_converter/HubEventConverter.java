@@ -1,4 +1,4 @@
-package ru.yandex.practicum.event.mapper.hub;
+package ru.yandex.practicum.event.mapper.hub_converter;
 
 import org.apache.avro.specific.SpecificRecordBase;
 import ru.yandex.practicum.event.model.hub_event.HubEvent;

@@ -1,4 +1,4 @@
-package ru.yandex.practicum.event.mapper.sensor;
+package ru.yandex.practicum.event.mapper.sensor_converter;
 
 import org.apache.avro.specific.SpecificRecordBase;
 import ru.yandex.practicum.event.model.sensor_event.SensorEvent;

@@ -1,4 +1,4 @@
-package ru.yandex.practicum.event.mapper.sensor;
+package ru.yandex.practicum.event.mapper.sensor_converter;
 
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.event.model.sensor_event.ClimateSensorEvent;
