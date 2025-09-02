@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.Properties;
 
 @Configuration
+
 public class KafkaClientConfiguration {
 
     @Value(value = "${closeClientTimeoutSec}")
