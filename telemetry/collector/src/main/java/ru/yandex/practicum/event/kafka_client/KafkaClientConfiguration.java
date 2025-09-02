@@ -5,14 +5,19 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import ru.yandex.practicum.serializer.GeneralAvroSerializer;
 
 import java.time.Duration;
 import java.util.Properties;
 
 @Configuration
 public class KafkaClientConfiguration {
+
+    @Value(value = "${kafkaServer}")
+    private String bootstrapAddress;
 
     @Bean
     KafkaClient getClient() {
@@ -38,12 +43,13 @@ public class KafkaClientConfiguration {
 
             private void initProducer() {
                 Properties config = new Properties();
-                config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+                config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
                 config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
                 config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, GeneralAvroSerializer.class);
 
                 producer = new KafkaProducer<>(config);
             }
+
         };
     }
 }

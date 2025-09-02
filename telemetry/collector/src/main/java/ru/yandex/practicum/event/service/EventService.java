@@ -3,68 +3,54 @@ package ru.yandex.practicum.event.service;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.event.kafka_client.KafkaClient;
-import ru.yandex.practicum.event.mapper.EventMapper;
-import ru.yandex.practicum.event.model.hub_event.HubEvent;
-import ru.yandex.practicum.event.model.sensor_event.SensorEvent;
+import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
+import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 
-@Slf4j
+
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class EventService {
 
     private final KafkaClient kafkaClient;
-    private final EventMapper eventMapper; // ✅ инжектим бин
 
-    private static final String SENSORS_TOPIC = "telemetry.sensors.v1";
-    private static final String HUB_TOPIC = "telemetry.hubs.v1";
+    @Value(value = "${sensorEventTopic}")
+    private String sensorsTopic;
 
-    public void sendSensorEvent(SensorEvent event) {
-        ProducerRecord<String, SpecificRecordBase> record = new ProducerRecord<>(
-                SENSORS_TOPIC,
+    @Value(value = "${hubEventTopic}")
+    private String hubTopic;
+
+    public void sendSensorEvent(SensorEventAvro event) {
+        log.info("Отправка {} в топик {}", event, sensorsTopic);
+        kafkaClient.getProducer().send(new ProducerRecord<>(
+                sensorsTopic,
                 null,
                 event.getTimestamp().toEpochMilli(),
                 event.getHubId(),
-                eventMapper.toSensorEventAvro(event) // ✅ не статик
+                event)
         );
-
-        kafkaClient.getProducer().send(record, (RecordMetadata metadata, Exception exception) -> {
-            if (exception != null) {
-                log.error("Ошибка при отправке SensorEvent: topic={}, key={}, payload={}",
-                        record.topic(), record.key(), record.value(), exception);
-            } else {
-                log.info("SensorEvent отправлен: topic={}, partition={}, offset={}, key={}",
-                        metadata.topic(), metadata.partition(), metadata.offset(), record.key());
-            }
-        });
+        log.info("Выполнена отправка {} в топик {}", event, sensorsTopic);
     }
 
-    public void sendHubEvent(HubEvent event) {
-        ProducerRecord<String, SpecificRecordBase> record = new ProducerRecord<>(
-                HUB_TOPIC,
+    public void sendHubEvent(HubEventAvro event) {
+        log.info("Отправка {} в топик {}", event, sensorsTopic);
+        kafkaClient.getProducer().send(new ProducerRecord<>(
+                hubTopic,
                 null,
                 event.getTimestamp().toEpochMilli(),
                 event.getHubId(),
-                eventMapper.toHubEventAvro(event) // ✅ не статик
+                event)
         );
-
-        kafkaClient.getProducer().send(record, (RecordMetadata metadata, Exception exception) -> {
-            if (exception != null) {
-                log.error("Ошибка при отправке HubEvent: topic={}, key={}, payload={}",
-                        record.topic(), record.key(), record.value(), exception);
-            } else {
-                log.info("HubEvent отправлен: topic={}, partition={}, offset={}, key={}",
-                        metadata.topic(), metadata.partition(), metadata.offset(), record.key());
-            }
-        });
+        log.info("Выполнена отправка {} в топик {}", event, sensorsTopic);
     }
 
     @PreDestroy
     public void stop() {
         kafkaClient.stop();
     }
+
 }
