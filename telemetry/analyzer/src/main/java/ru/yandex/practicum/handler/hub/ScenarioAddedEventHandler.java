@@ -11,7 +11,6 @@ import ru.yandex.practicum.repository.ConditionRepository;
 import ru.yandex.practicum.repository.ScenarioRepository;
 import ru.yandex.practicum.repository.SensorRepository;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -40,32 +39,33 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
         ScenarioAddedEventAvro scenarioEvent = (ScenarioAddedEventAvro) event.getPayload();
         validateSensors(scenarioEvent.getConditions(), scenarioEvent.getActions(), event.getHubId());
 
-        Optional<Scenario> existingScenario = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName());
+        record ScenarioWithOldIds(Scenario scenario, List<Long> oldConditionIds, List<Long> oldActionIds) {}
 
-        List<Long> oldConditionIds = new ArrayList<>();
-        List<Long> oldActionIds = new ArrayList<>();
+        ScenarioWithOldIds result = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName())
+                .map(existing -> {
+                    List<Long> oldConditionIds = existing.getConditions().stream().map(Condition::getId).toList();
+                    List<Long> oldActionIds = existing.getActions().stream().map(Action::getId).toList();
 
-        Scenario scenario = existingScenario
-                .map(s -> {
-                    oldConditionIds.addAll(s.getConditions().stream().map(Condition::getId).toList());
-                    oldActionIds.addAll(s.getActions().stream().map(Action::getId).toList());
-
-                    s.setConditions(scenarioEvent.getConditions().stream()
-                            .map(c -> mapToCondition(s, c))
+                    existing.setConditions(scenarioEvent.getConditions().stream()
+                            .map(conditionAvro -> mapToCondition(existing, conditionAvro))
                             .toList());
-                    s.setActions(scenarioEvent.getActions().stream()
-                            .map(a -> mapToAction(s, a))
+                    existing.setActions(scenarioEvent.getActions().stream()
+                            .map(actionAvro -> mapToAction(existing, actionAvro))
                             .toList());
 
-                    return s;
+                    return new ScenarioWithOldIds(existing, oldConditionIds, oldActionIds);
                 })
-                .orElseGet(() -> mapToScenario(event, scenarioEvent));
+                .orElseGet(() -> new ScenarioWithOldIds(
+                        mapToScenario(event, scenarioEvent),
+                        List.of(),
+                        List.of()
+                ));
 
-        scenarioRepository.save(scenario);
-        log.info("В БД сохранен scenario: {}", scenario);
+        scenarioRepository.save(result.scenario());
+        log.info("В БД сохранен scenario: {}", result.scenario());
 
-        cleanupUnusedConditions(oldConditionIds);
-        cleanupUnusedActions(oldActionIds);
+        cleanupUnusedConditions(result.oldConditionIds());
+        cleanupUnusedActions(result.oldActionIds());
     }
 
 

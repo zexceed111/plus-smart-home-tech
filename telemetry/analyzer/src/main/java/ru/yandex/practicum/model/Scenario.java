@@ -12,16 +12,23 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@NamedEntityGraph(
+        name = "Scenario.withConditionsAndActions",
+        attributeNodes = {
+                @NamedAttributeNode("conditions"),
+                @NamedAttributeNode("actions")
+        }
+)
 public class Scenario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "hub_id")
+    @Column(name = "hub_id", nullable = false)
     private String hubId;
 
-    @Column(name = "name")
+    @Column(name = "name", nullable = false)
     private String name;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -39,5 +46,4 @@ public class Scenario {
             inverseJoinColumns = @JoinColumn(name = "action_id")
     )
     private List<Action> actions;
-
 }
