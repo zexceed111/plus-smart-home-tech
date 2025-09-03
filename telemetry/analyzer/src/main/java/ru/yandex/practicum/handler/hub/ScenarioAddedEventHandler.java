@@ -34,40 +34,39 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
     @Transactional
     @Override
     public void handle(HubEventAvro event) {
+
         log.info("Поступил для сохранения scenario: {}", event);
 
         ScenarioAddedEventAvro scenarioEvent = (ScenarioAddedEventAvro) event.getPayload();
         validateSensors(scenarioEvent.getConditions(), scenarioEvent.getActions(), event.getHubId());
 
-        record ScenarioWithOldIds(Scenario scenario, List<Long> oldConditionIds, List<Long> oldActionIds) {}
+        Optional<Scenario> existingScenario = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName());
+        Scenario scenario;
 
-        ScenarioWithOldIds result = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName())
-                .map(existing -> {
-                    List<Long> oldConditionIds = existing.getConditions().stream().map(Condition::getId).toList();
-                    List<Long> oldActionIds = existing.getActions().stream().map(Action::getId).toList();
+        List<Long> oldConditionIds = null;
+        List<Long> oldActionIds = null;
 
-                    existing.setConditions(scenarioEvent.getConditions().stream()
-                            .map(conditionAvro -> mapToCondition(existing, conditionAvro))
-                            .toList());
-                    existing.setActions(scenarioEvent.getActions().stream()
-                            .map(actionAvro -> mapToAction(existing, actionAvro))
-                            .toList());
+        if (existingScenario.isEmpty()) {
+            scenario = mapToScenario(event, scenarioEvent);
+        } else {
+            scenario = existingScenario.get();
+            oldConditionIds = scenario.getConditions().stream().map(Condition::getId).toList();
+            oldActionIds = scenario.getActions().stream().map(Action::getId).toList();
 
-                    return new ScenarioWithOldIds(existing, oldConditionIds, oldActionIds);
-                })
-                .orElseGet(() -> new ScenarioWithOldIds(
-                        mapToScenario(event, scenarioEvent),
-                        List.of(),
-                        List.of()
-                ));
+            scenario.setConditions(scenarioEvent.getConditions().stream()
+                    .map(conditionAvro -> mapToCondition(scenario, conditionAvro))
+                    .collect(Collectors.toList()));
+            scenario.setActions(scenarioEvent.getActions().stream()
+                    .map(actionAvro -> mapToAction(scenario, actionAvro))
+                    .collect(Collectors.toList()));
+        }
 
-        scenarioRepository.save(result.scenario());
-        log.info("В БД сохранен scenario: {}", result.scenario());
+        scenarioRepository.save(scenario);
+        log.info("В БД сохранен scenario: {}", scenario);
 
-        cleanupUnusedConditions(result.oldConditionIds());
-        cleanupUnusedActions(result.oldActionIds());
+        cleanupUnusedConditions(oldConditionIds);
+        cleanupUnusedActions(oldActionIds);
     }
-
 
     private void validateSensors(Collection<ScenarioConditionAvro> conditions, Collection<DeviceActionAvro> actions, String hubId) {
         List<String> conditionSensorIds = getConditionSensorIds(conditions);

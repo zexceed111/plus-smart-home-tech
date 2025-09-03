@@ -1,6 +1,5 @@
 package ru.yandex.practicum.repository;
 
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import ru.yandex.practicum.model.Scenario;
 
@@ -11,7 +10,6 @@ public interface ScenarioRepository extends JpaRepository<Scenario, Long> {
 
     List<Scenario> findByHubId(String hubId);
 
-    @EntityGraph(value = "Scenario.withConditionsAndActions")
     Optional<Scenario> findByHubIdAndName(String hubId, String name);
 
     void deleteByName(String name);
