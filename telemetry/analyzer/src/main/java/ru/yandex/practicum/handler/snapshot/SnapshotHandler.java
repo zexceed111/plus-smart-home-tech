@@ -13,6 +13,7 @@ import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 import ru.yandex.practicum.model.Action;
 import ru.yandex.practicum.model.Condition;
+import ru.yandex.practicum.model.ConditionOperation;
 import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
@@ -37,100 +38,100 @@ public class SnapshotHandler {
                            Set<SensorEventHandler> sensorEventHandlers) {
         this.scenarioRepository = scenarioRepository;
         this.sensorEventHandlers = sensorEventHandlers.stream()
-                .collect(Collectors.toMap(
-                        SensorEventHandler::getSensorType,
-                        Function.identity()
-                ));
+                .collect(Collectors.toMap(SensorEventHandler::getSensorType, Function.identity()));
     }
 
     public void handle(SensorsSnapshotAvro snapshotAvro) {
+        log.info("Обрабатываем snapshot: {}", snapshotAvro);
 
-        log.info("На обработку поступил snapshot: {}", snapshotAvro);
-
-        // Используем join fetch метод репозитория, чтобы сразу подгрузить условия и действия
+        // Загружаем сценарии вместе с conditions и actions
         List<Scenario> scenarios = scenarioRepository.findByHubIdWithConditionsAndActions(snapshotAvro.getHubId());
+        if (scenarios.isEmpty()) {
+            log.warn("Сценарии не найдены для хаба {}", snapshotAvro.getHubId());
+            return;
+        }
 
         Map<String, SensorStateAvro> sensorStates = snapshotAvro.getSensorsState();
 
-        scenarios = scenarios.stream()
-                .filter(scenario -> checkConditions(scenario.getConditions(), sensorStates))
+        // Фильтруем сценарии по условиям
+        List<Scenario> filteredScenarios = scenarios.stream()
+                .filter(s -> checkConditions(s.getConditions(), sensorStates))
                 .toList();
 
-        for (Scenario scenario : scenarios) {
+        if (filteredScenarios.isEmpty()) {
+            log.info("Нет сценариев, удовлетворяющих условиям");
+            return;
+        }
+
+        for (Scenario scenario : filteredScenarios) {
+            log.info("Выполняем сценарий: {}", scenario.getName());
             for (Action action : scenario.getActions()) {
-                DeviceActionProto actionProto = DeviceActionProto.newBuilder()
-                        .setSensorId(action.getSensor().getId())
-                        .setType(ActionTypeProto.valueOf(action.getType().name()))
-                        .setValue(action.getValue())
-                        .build();
-
-                Timestamp timestamp = Timestamp.newBuilder()
-                        .setSeconds(Instant.now().getEpochSecond())
-                        .setNanos(Instant.now().getNano())
-                        .build();
-
-                DeviceActionRequest request = DeviceActionRequest.newBuilder()
-                        .setHubId(scenario.getHubId())
-                        .setScenarioName(scenario.getName())
-                        .setTimestamp(timestamp)
-                        .setAction(actionProto)
-                        .build();
-
-                hubRouterClient.handleDeviceAction(request);
-                log.info("Отправлено действие: {}", request);
+                try {
+                    sendAction(scenario.getHubId(), scenario.getName(), action);
+                } catch (Exception e) {
+                    log.error("Ошибка при отправке действия {} для сценария {}", action, scenario.getName(), e);
+                }
             }
         }
     }
 
-    private boolean checkConditions(List<Condition> conditions, Map<String, SensorStateAvro> sensorStates) {
+    private void sendAction(String hubId, String scenarioName, Action action) {
+        DeviceActionProto actionProto = DeviceActionProto.newBuilder()
+                .setSensorId(action.getSensor().getId())
+                .setType(ActionTypeProto.valueOf(action.getType().name()))
+                .setValue(action.getValue())
+                .build();
 
+        Timestamp timestamp = Timestamp.newBuilder()
+                .setSeconds(Instant.now().getEpochSecond())
+                .setNanos(Instant.now().getNano())
+                .build();
+
+        DeviceActionRequest request = DeviceActionRequest.newBuilder()
+                .setHubId(hubId)
+                .setScenarioName(scenarioName)
+                .setTimestamp(timestamp)
+                .setAction(actionProto)
+                .build();
+
+        log.info("Отправляем gRPC действие: {}", request);
+        hubRouterClient.handleDeviceAction(request);
+    }
+
+    private boolean checkConditions(List<Condition> conditions, Map<String, SensorStateAvro> sensorStates) {
         if (conditions == null || conditions.isEmpty()) {
-            log.info("No conditions to check");
             return true;
         }
-
         if (sensorStates == null || sensorStates.isEmpty()) {
-            log.warn("Sensor states are null or empty");
+            log.warn("Sensor states пустые");
             return false;
         }
-
         return conditions.stream()
-                .allMatch(condition -> checkCondition(condition, sensorStates.get(condition.getSensor().getId())));
+                .allMatch(c -> checkCondition(c, sensorStates.get(c.getSensor().getId())));
     }
 
     private boolean checkCondition(Condition condition, SensorStateAvro sensorStateAvro) {
-
-        if (condition == null) {
-            log.warn("Condition is null");
-            return false;
-        }
-
-        if (sensorStateAvro == null) {
-            log.warn("SensorStateAvro is null for condition: {}", condition);
-            return false;
-        }
-
-        if (sensorStateAvro.getData() == null) {
-            log.warn("Sensor data is null for condition: {}", condition);
+        if (condition == null || sensorStateAvro == null || sensorStateAvro.getData() == null) {
+            log.warn("Невозможно проверить condition {}: данные отсутствуют", condition);
             return false;
         }
 
         String type = sensorStateAvro.getData().getClass().getName();
-        if (!sensorEventHandlers.containsKey(type)) {
+        SensorEventHandler handler = sensorEventHandlers.get(type);
+        if (handler == null) {
             throw new IllegalArgumentException("Не найден обработчик для сенсора: " + type);
         }
 
-        Integer value = sensorEventHandlers.get(type).getSensorValue(condition.getType(), sensorStateAvro);
-
+        Integer value = handler.getSensorValue(condition.getType(), sensorStateAvro);
         if (value == null) {
-            log.warn("Sensor value is null for condition: {}", condition);
+            log.warn("Значение сенсора null для condition {}", condition);
             return false;
         }
 
         return switch (condition.getOperation()) {
-            case LOWER_THAN -> value < condition.getValue();
-            case EQUALS -> value.equals(condition.getValue());
-            case GREATER_THAN -> value > condition.getValue();
+            case ConditionOperation.LOWER_THAN -> value < condition.getValue();
+            case ConditionOperation.EQUALS -> value.equals(condition.getValue());
+            case ConditionOperation.GREATER_THAN -> value > condition.getValue();
         };
     }
 }
