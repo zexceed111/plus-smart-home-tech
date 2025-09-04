@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
-import java.time.Duration;
 import java.util.Properties;
 
 @Configuration
@@ -44,12 +43,10 @@ public class KafkaClientImpl {
             @Override
             public void stop() {
                 if (snapshotConsumer != null) {
-                    snapshotConsumer.commitSync();
-                    snapshotConsumer.close(Duration.ofSeconds(kafkaProperties.getCloseClientTimeoutSec()));
+                    snapshotConsumer.wakeup();
                 }
                 if (hubEventConsumer != null) {
-                    hubEventConsumer.commitSync();
-                    hubEventConsumer.close(Duration.ofSeconds(kafkaProperties.getCloseClientTimeoutSec()));
+                    hubEventConsumer.wakeup();
                 }
             }
 

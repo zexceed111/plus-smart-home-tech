@@ -6,6 +6,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.handler.hub.HubEventHandler;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
@@ -55,16 +56,22 @@ public class HubEventProcessor implements Runnable {
         log.info("Запущен HubEventProcessor");
         try (Consumer<String, HubEventAvro> hubEventConsumer = kafkaClient.getHubEventConsumer()) {
             while (true) {
-                Long pollTimeout = kafkaProperties.getHubConsumer().getPollTimeoutSec();
-                ConsumerRecords<String, HubEventAvro> records = hubEventConsumer.poll(Duration.ofMillis(pollTimeout));
+                try {
+                    Long pollTimeout = kafkaProperties.getHubConsumer().getPollTimeoutSec();
+                    ConsumerRecords<String, HubEventAvro> records =
+                            hubEventConsumer.poll(Duration.ofSeconds(pollTimeout));
 
-                int count = 0;
-                for (ConsumerRecord<String, HubEventAvro> record : records) {
-                    handleRecord(record.value());
-                    manageOffsets(record, count, hubEventConsumer);
-                    count++;
+                    int count = 0;
+                    for (ConsumerRecord<String, HubEventAvro> record : records) {
+                        handleRecord(record.value());
+                        manageOffsets(record, count, hubEventConsumer);
+                        count++;
+                    }
+                    hubEventConsumer.commitAsync();
+                } catch (WakeupException e) {
+                    log.info("Получен WakeupException — корректное завершение работы HubEventConsumer");
+                    break;
                 }
-                hubEventConsumer.commitAsync();
             }
         } catch (Exception e) {
             log.error("Ошибка во время обработки HubEventAvro в analyzer", e);
