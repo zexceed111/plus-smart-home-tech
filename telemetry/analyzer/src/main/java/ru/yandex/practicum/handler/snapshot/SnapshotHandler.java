@@ -13,7 +13,6 @@ import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 import ru.yandex.practicum.model.Action;
 import ru.yandex.practicum.model.Condition;
-import ru.yandex.practicum.model.ConditionOperation;
 import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
@@ -48,7 +47,9 @@ public class SnapshotHandler {
 
         log.info("На обработку поступил snapshot: {}", snapshotAvro);
 
-        List<Scenario> scenarios = scenarioRepository.findByHubId(snapshotAvro.getHubId());
+        // Используем join fetch метод репозитория, чтобы сразу подгрузить условия и действия
+        List<Scenario> scenarios = scenarioRepository.findByHubIdWithConditionsAndActions(snapshotAvro.getHubId());
+
         Map<String, SensorStateAvro> sensorStates = snapshotAvro.getSensorsState();
 
         scenarios = scenarios.stream()
@@ -56,9 +57,7 @@ public class SnapshotHandler {
                 .toList();
 
         for (Scenario scenario : scenarios) {
-
-            List<Action> actions = scenario.getActions();
-            for (Action action : actions) {
+            for (Action action : scenario.getActions()) {
                 DeviceActionProto actionProto = DeviceActionProto.newBuilder()
                         .setSensorId(action.getSensor().getId())
                         .setType(ActionTypeProto.valueOf(action.getType().name()))
@@ -80,7 +79,6 @@ public class SnapshotHandler {
                 hubRouterClient.handleDeviceAction(request);
                 log.info("Отправлено действие: {}", request);
             }
-
         }
     }
 
@@ -98,7 +96,6 @@ public class SnapshotHandler {
 
         return conditions.stream()
                 .allMatch(condition -> checkCondition(condition, sensorStates.get(condition.getSensor().getId())));
-
     }
 
     private boolean checkCondition(Condition condition, SensorStateAvro sensorStateAvro) {
@@ -131,10 +128,9 @@ public class SnapshotHandler {
         }
 
         return switch (condition.getOperation()) {
-            case ConditionOperation.LOWER_THAN -> value < condition.getValue();
-            case ConditionOperation.EQUALS -> value.equals(condition.getValue());
-            case ConditionOperation.GREATER_THAN -> value > condition.getValue();
+            case LOWER_THAN -> value < condition.getValue();
+            case EQUALS -> value.equals(condition.getValue());
+            case GREATER_THAN -> value > condition.getValue();
         };
-
     }
 }
