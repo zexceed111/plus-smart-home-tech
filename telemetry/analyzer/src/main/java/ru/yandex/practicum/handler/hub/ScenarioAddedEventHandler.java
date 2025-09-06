@@ -12,7 +12,6 @@ import ru.yandex.practicum.repository.ConditionRepository;
 import ru.yandex.practicum.repository.ScenarioRepository;
 import ru.yandex.practicum.repository.SensorRepository;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -36,40 +35,39 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
     @Transactional
     @Override
     public void handle(HubEventAvro event) {
+
         log.info("Поступил для сохранения scenario: {}", event);
 
         ScenarioAddedEventAvro scenarioEvent = (ScenarioAddedEventAvro) event.getPayload();
         validateSensors(scenarioEvent.getConditions(), scenarioEvent.getActions(), event.getHubId());
 
-        var existingScenario = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName());
+        Optional<Scenario> existingScenario = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName());
+        Scenario scenario;
 
-        List<Long> oldConditionIds = new ArrayList<>();
-        List<Long> oldActionIds = new ArrayList<>();
+        List<Long> oldConditionIds = null;
+        List<Long> oldActionIds = null;
 
-        Scenario scenario = existingScenario.map(s -> {
-            oldConditionIds.addAll(s.getConditions().stream().map(Condition::getId).toList());
-            oldActionIds.addAll(s.getActions().stream().map(Action::getId).toList());
+        if (existingScenario.isEmpty()) {
+            scenario = mapToScenario(event, scenarioEvent);
+        } else {
+            scenario = existingScenario.get();
+            oldConditionIds = scenario.getConditions().stream().map(Condition::getId).toList();
+            oldActionIds = scenario.getActions().stream().map(Action::getId).toList();
 
-            s.setConditions(
-                    scenarioEvent.getConditions().stream()
-                            .map(conditionAvro -> mapToCondition(s, conditionAvro))
-                            .toList()
-            );
-            s.setActions(
-                    scenarioEvent.getActions().stream()
-                            .map(actionAvro -> mapToAction(s, actionAvro))
-                            .toList()
-            );
-            return s;
-        }).orElseGet(() -> mapToScenario(event, scenarioEvent));
+            scenario.setConditions(scenarioEvent.getConditions().stream()
+                    .map(conditionAvro -> mapToCondition(scenario, conditionAvro))
+                    .collect(Collectors.toList()));
+            scenario.setActions(scenarioEvent.getActions().stream()
+                    .map(actionAvro -> mapToAction(scenario, actionAvro))
+                    .collect(Collectors.toList()));
+        }
 
         scenarioRepository.save(scenario);
         log.info("В БД сохранен scenario: {}", scenario);
 
-        cleanupUnusedConditions(oldConditionIds.isEmpty() ? null : oldConditionIds);
-        cleanupUnusedActions(oldActionIds.isEmpty() ? null : oldActionIds);
+        cleanupUnusedConditions(oldConditionIds);
+        cleanupUnusedActions(oldActionIds);
     }
-
 
     private void validateSensors(Collection<ScenarioConditionAvro> conditions, Collection<DeviceActionAvro> actions, String hubId) {
         List<String> conditionSensorIds = getConditionSensorIds(conditions);
