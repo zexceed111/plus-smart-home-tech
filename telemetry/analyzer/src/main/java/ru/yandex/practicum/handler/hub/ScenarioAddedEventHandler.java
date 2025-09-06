@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.exception.NotFoundException;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 import ru.yandex.practicum.model.*;
 import ru.yandex.practicum.repository.ActionRepository;
@@ -73,10 +74,10 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
         List<String> actionSensorIds = getActionSensorIds(actions);
 
         if (!sensorRepository.existsByIdInAndHubId(conditionSensorIds, hubId)) {
-            throw new RuntimeException("Сенсоры для scenarioCondition не найдены");
+            throw new NotFoundException("Сенсоры для scenarioCondition не найдены");
         }
         if (!sensorRepository.existsByIdInAndHubId(actionSensorIds, hubId)) {
-            throw new RuntimeException("Сенсоры для scenarioAction не найдены");
+            throw new NotFoundException("Сенсоры для scenarioAction не найдены");
         }
     }
 
