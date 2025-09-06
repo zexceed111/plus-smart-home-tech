@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.exception.NotFoundException;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 import ru.yandex.practicum.model.*;
 import ru.yandex.practicum.repository.ActionRepository;
@@ -40,72 +41,64 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
         ScenarioAddedEventAvro scenarioEvent = (ScenarioAddedEventAvro) event.getPayload();
         validateSensors(scenarioEvent.getConditions(), scenarioEvent.getActions(), event.getHubId());
 
-        // Используем join fetch, чтобы сразу подгрузить условия и действия
-        Optional<Scenario> existingScenario = scenarioRepository
-                .findByHubIdAndNameWithConditionsAndActions(event.getHubId(), scenarioEvent.getName());
+        var existingScenario = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName());
 
         List<Long> oldConditionIds = new ArrayList<>();
         List<Long> oldActionIds = new ArrayList<>();
 
-        Scenario scenario = existingScenario
-                .map(existing -> {
-                    // Собираем старые id для последующего удаления
-                    oldConditionIds.addAll(existing.getConditions().stream()
-                            .map(Condition::getId)
-                            .toList());
-                    oldActionIds.addAll(existing.getActions().stream()
-                            .map(Action::getId)
-                            .toList());
+        Scenario scenario = existingScenario.map(s -> {
+            oldConditionIds.addAll(s.getConditions().stream().map(Condition::getId).toList());
+            oldActionIds.addAll(s.getActions().stream().map(Action::getId).toList());
 
-                    // Обновляем условия и действия
-                    existing.setConditions(scenarioEvent.getConditions().stream()
-                            .map(conditionAvro -> mapToCondition(existing, conditionAvro))
-                            .toList());
-                    existing.setActions(scenarioEvent.getActions().stream()
-                            .map(actionAvro -> mapToAction(existing, actionAvro))
-                            .toList());
-
-                    return existing;
-                })
-                .orElseGet(() -> mapToScenario(event, scenarioEvent));
+            s.setConditions(
+                    scenarioEvent.getConditions().stream()
+                            .map(conditionAvro -> mapToCondition(s, conditionAvro))
+                            .toList()
+            );
+            s.setActions(
+                    scenarioEvent.getActions().stream()
+                            .map(actionAvro -> mapToAction(s, actionAvro))
+                            .toList()
+            );
+            return s;
+        }).orElseGet(() -> mapToScenario(event, scenarioEvent));
 
         scenarioRepository.save(scenario);
         log.info("В БД сохранен scenario: {}", scenario);
 
-        cleanupUnusedConditions(oldConditionIds);
-        cleanupUnusedActions(oldActionIds);
+        cleanupUnusedConditions(oldConditionIds.isEmpty() ? null : oldConditionIds);
+        cleanupUnusedActions(oldActionIds.isEmpty() ? null : oldActionIds);
     }
 
-    private void validateSensors(Collection<ScenarioConditionAvro> conditions,
-                                 Collection<DeviceActionAvro> actions,
-                                 String hubId) {
+
+    private void validateSensors(Collection<ScenarioConditionAvro> conditions, Collection<DeviceActionAvro> actions, String hubId) {
         List<String> conditionSensorIds = getConditionSensorIds(conditions);
         List<String> actionSensorIds = getActionSensorIds(actions);
 
         if (!sensorRepository.existsByIdInAndHubId(conditionSensorIds, hubId)) {
-            throw new RuntimeException("Сенсоры для scenarioCondition не найдены");
+            throw new NotFoundException("Сенсоры для scenarioCondition не найдены");
         }
         if (!sensorRepository.existsByIdInAndHubId(actionSensorIds, hubId)) {
-            throw new RuntimeException("Сенсоры для scenarioAction не найдены");
+            throw new NotFoundException("Сенсоры для scenarioAction не найдены");
         }
     }
 
     private List<String> getConditionSensorIds(Collection<ScenarioConditionAvro> conditions) {
-        return conditions.stream().map(ScenarioConditionAvro::getSensorId).toList();
+        return conditions.stream().map(ScenarioConditionAvro::getSensorId).collect(Collectors.toList());
     }
 
     private List<String> getActionSensorIds(Collection<DeviceActionAvro> actions) {
-        return actions.stream().map(DeviceActionAvro::getSensorId).toList();
+        return actions.stream().map(DeviceActionAvro::getSensorId).collect(Collectors.toList());
     }
 
     private void cleanupUnusedConditions(Collection<Long> conditionIds) {
-        if (!conditionIds.isEmpty()) {
+        if (conditionIds != null && !conditionIds.isEmpty()) {
             conditionRepository.deleteAllById(conditionIds);
         }
     }
 
     private void cleanupUnusedActions(Collection<Long> actionIds) {
-        if (!actionIds.isEmpty()) {
+        if (actionIds != null && !actionIds.isEmpty()) {
             actionRepository.deleteAllById(actionIds);
         }
     }
@@ -120,27 +113,21 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
         scenario.setActions(scenarioAddedEventAvro.getActions().stream()
                 .map(actionAvro -> mapToAction(scenario, actionAvro))
                 .toList());
+
         return scenario;
     }
 
     private Action mapToAction(Scenario scenario, DeviceActionAvro deviceActionAvro) {
-        // Берем существующий Sensor из репозитория
-        Sensor sensor = sensorRepository.findByIdAndHubId(deviceActionAvro.getSensorId(), scenario.getHubId())
-                .orElseThrow(() -> new RuntimeException("Sensor not found: " + deviceActionAvro.getSensorId()));
-
         return Action.builder()
-                .sensor(sensor)
+                .sensor(new Sensor(deviceActionAvro.getSensorId(), scenario.getHubId()))
                 .type(toActionType(deviceActionAvro.getType()))
                 .value(deviceActionAvro.getValue())
                 .build();
     }
 
     private Condition mapToCondition(Scenario scenario, ScenarioConditionAvro conditionAvro) {
-        Sensor sensor = sensorRepository.findByIdAndHubId(conditionAvro.getSensorId(), scenario.getHubId())
-                .orElseThrow(() -> new RuntimeException("Sensor not found: " + conditionAvro.getSensorId()));
-
         return Condition.builder()
-                .sensor(sensor)
+                .sensor(new Sensor(conditionAvro.getSensorId(), scenario.getHubId()))
                 .type(toConditionType(conditionAvro.getType()))
                 .operation(toConditionOperation(conditionAvro.getOperation()))
                 .value(getConditionValue(conditionAvro.getValue()))
@@ -161,10 +148,15 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
     }
 
     private Integer getConditionValue(Object conditionValue) {
-        if (conditionValue == null) return null;
-        if (conditionValue instanceof Boolean) return ((Boolean) conditionValue ? 1 : 0);
-        if (conditionValue instanceof Integer) return (Integer) conditionValue;
+        if (conditionValue == null) {
+            return null;
+        }
+        if (conditionValue instanceof Boolean) {
+            return ((Boolean) conditionValue ? 1 : 0);
+        }
+        if (conditionValue instanceof Integer) {
+            return (Integer) conditionValue;
+        }
         throw new ClassCastException("Ошибка преобразования значения условия");
     }
 }
-
