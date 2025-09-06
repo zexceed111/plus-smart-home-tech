@@ -15,6 +15,5 @@ public class KafkaConsumerProperties {
     private String keyDeserializer;
     private String valueDeserializer;
     private Long pollTimeoutSec;
-    private Integer autoCommitRecordCount;
 
 }
