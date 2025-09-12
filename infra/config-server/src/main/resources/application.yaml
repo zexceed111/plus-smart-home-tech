@@ -1,0 +1,18 @@
+server:
+  port: 8888
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native # Хранение конфигов в файле
+  cloud:
+    config:
+      server:
+        native:
+          search-locations:
+            - classpath:config/telemetry/{application}
+      fail-fast: true # В случае недоступности сервера приложение сразу "упадет"
+      retry:
+        use-random-policy: true # Каждая последующая попытка переподключения совершается через всё больший случайный интервал времени
+        # Такой механизм позволяет не перегрузить сервер конфигураций, если сразу несколько сервисов пытаются одновременно подключиться к нему через одинаковые промежутки времени
+        max-interval: 6000 # Максимально возможный интервал
