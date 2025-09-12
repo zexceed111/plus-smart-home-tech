@@ -44,13 +44,14 @@ public class KafkaClientImpl {
             @Override
             public void stop() {
                 if (snapshotConsumer != null) {
-                    snapshotConsumer.wakeup();
+                    snapshotConsumer.commitSync();
+                    snapshotConsumer.close(Duration.ofSeconds(kafkaProperties.getCloseClientTimeoutSec()));
                 }
                 if (hubEventConsumer != null) {
-                    hubEventConsumer.wakeup();
+                    hubEventConsumer.commitSync();
+                    hubEventConsumer.close(Duration.ofSeconds(kafkaProperties.getCloseClientTimeoutSec()));
                 }
             }
-
 
             private void initSnapshotConsumer() {
                 Properties properties = new Properties();

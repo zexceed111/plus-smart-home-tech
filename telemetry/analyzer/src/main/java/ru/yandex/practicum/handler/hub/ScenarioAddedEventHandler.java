@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.exception.NotFoundException;
 import ru.yandex.practicum.kafka.telemetry.event.*;
 import ru.yandex.practicum.model.*;
 import ru.yandex.practicum.repository.ActionRepository;
@@ -14,7 +15,6 @@ import ru.yandex.practicum.repository.SensorRepository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -35,39 +35,38 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
     @Transactional
     @Override
     public void handle(HubEventAvro event) {
+
         log.info("Поступил для сохранения scenario: {}", event);
 
         ScenarioAddedEventAvro scenarioEvent = (ScenarioAddedEventAvro) event.getPayload();
         validateSensors(scenarioEvent.getConditions(), scenarioEvent.getActions(), event.getHubId());
 
-        Optional<Scenario> existingScenario = scenarioRepository.findByHubIdAndName(
-                event.getHubId(),
-                scenarioEvent.getName()
-        );
+        Optional<Scenario> existingScenario = scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioEvent.getName());
+        Scenario scenario;
 
-        AtomicReference<List<Long>> oldConditionIds = new AtomicReference<>(null);
-        AtomicReference<List<Long>> oldActionIds = new AtomicReference<>(null);
+        List<Long> oldConditionIds = null;
+        List<Long> oldActionIds = null;
 
-        Scenario scenario = existingScenario
-                .map(s -> {
-                    oldConditionIds.set(s.getConditions().stream().map(Condition::getId).toList());
-                    oldActionIds.set(s.getActions().stream().map(Action::getId).toList());
+        if (existingScenario.isEmpty()) {
+            scenario = mapToScenario(event, scenarioEvent);
+        } else {
+            scenario = existingScenario.get();
+            oldConditionIds = scenario.getConditions().stream().map(Condition::getId).toList();
+            oldActionIds = scenario.getActions().stream().map(Action::getId).toList();
 
-                    s.setConditions(scenarioEvent.getConditions().stream()
-                            .map(c -> mapToCondition(s, c))
-                            .toList());
-                    s.setActions(scenarioEvent.getActions().stream()
-                            .map(a -> mapToAction(s, a))
-                            .toList());
-                    return s;
-                })
-                .orElseGet(() -> mapToScenario(event, scenarioEvent));
+            scenario.setConditions(scenarioEvent.getConditions().stream()
+                    .map(conditionAvro -> mapToCondition(scenario, conditionAvro))
+                    .collect(Collectors.toList()));
+            scenario.setActions(scenarioEvent.getActions().stream()
+                    .map(actionAvro -> mapToAction(scenario, actionAvro))
+                    .collect(Collectors.toList()));
+        }
 
         scenarioRepository.save(scenario);
         log.info("В БД сохранен scenario: {}", scenario);
 
-        cleanupUnusedConditions(oldConditionIds.get());
-        cleanupUnusedActions(oldActionIds.get());
+        cleanupUnusedConditions(oldConditionIds);
+        cleanupUnusedActions(oldActionIds);
     }
 
     private void validateSensors(Collection<ScenarioConditionAvro> conditions, Collection<DeviceActionAvro> actions, String hubId) {
@@ -75,10 +74,10 @@ public class ScenarioAddedEventHandler implements HubEventHandler {
         List<String> actionSensorIds = getActionSensorIds(actions);
 
         if (!sensorRepository.existsByIdInAndHubId(conditionSensorIds, hubId)) {
-            throw new RuntimeException("Сенсоры для scenarioCondition не найдены");
+            throw new NotFoundException("Сенсоры для scenarioCondition не найдены");
         }
         if (!sensorRepository.existsByIdInAndHubId(actionSensorIds, hubId)) {
-            throw new RuntimeException("Сенсоры для scenarioAction не найдены");
+            throw new NotFoundException("Сенсоры для scenarioAction не найдены");
         }
     }
 
