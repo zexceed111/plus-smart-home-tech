@@ -11,6 +11,7 @@ spring:
         native:
           search-locations:
             - classpath:config/telemetry/{application}
+            - classpath:config/commerce/{application}
       fail-fast: true # В случае недоступности сервера приложение сразу "упадет"
       retry:
         use-random-policy: true # Каждая последующая попытка переподключения совершается через всё больший случайный интервал времени
