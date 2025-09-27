@@ -1,3 +1,6 @@
+server:
+  port: 0
+
 kafka:
   config:
     bootstrap-address: localhost:9092
