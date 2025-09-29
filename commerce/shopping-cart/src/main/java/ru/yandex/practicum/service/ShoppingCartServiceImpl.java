@@ -73,7 +73,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         ShoppingCart shoppingCart = getShoppingCartOrCreate(username);
         checkCartIsActive(shoppingCart);
         Map<UUID, Long> products = shoppingCart.getProducts();
-        products.put(request.getProductId(), request.getQuantity());
+        products.put(request.getProductId(), request.getNewQuantity());
         shoppingCart.setProducts(products);
         ShoppingCartDto shoppingCartDto = ShoppingCartMapper.toShoppingCartDto(shoppingCartRepository.save(shoppingCart));
         warehouseClient.checkProductQuantityEnoughForShoppingCart(shoppingCartDto);

@@ -63,7 +63,7 @@ public class ShoppingCartController {
     @ResponseStatus(HttpStatus.OK)
     public ShoppingCartDto changeProductQuantity(@RequestParam String username, @RequestBody ChangeProductQuantityRequest request) {
         log.info("Поступил запрос Post {}/change-quantity на изменение кол-ва товаров с UUID = {} - {} шт. в корзине пользователя {}",
-                prefix, request.getProductId(), request.getQuantity(), username);
+                prefix, request.getProductId(), request.getNewQuantity(), username);
         ShoppingCartDto response = shoppingCartService.changeProductQuantity(username, request);
         log.info("Сформирован ответ Post {}/change-quantity с телом: {}", prefix, response);
         return response;

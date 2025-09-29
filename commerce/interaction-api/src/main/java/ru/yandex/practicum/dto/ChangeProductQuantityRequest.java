@@ -15,5 +15,5 @@ public class ChangeProductQuantityRequest {
     private UUID productId;
 
     @NotNull
-    private Long quantity;
+    private Long newQuantity;
 }

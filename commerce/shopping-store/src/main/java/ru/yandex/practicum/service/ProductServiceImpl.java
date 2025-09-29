@@ -1,7 +1,6 @@
 package ru.yandex.practicum.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +10,7 @@ import ru.yandex.practicum.mapper.ProductMapper;
 import ru.yandex.practicum.model.Product;
 import ru.yandex.practicum.repository.ProductRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,9 +28,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductDto> getProductsByParams(ProductCategory category, Pageable pageable) {
-        Page<Product> products = (Page<Product>) productRepository.findAllByProductCategory(category, pageable);
-        return products.map(ProductMapper::toProductDto);
+    public List<ProductDto> getProductsByParams(ProductCategory category, Pageable pageable) {
+        List<Product> products = productRepository.findAllByProductCategory(category, pageable);
+        return ProductMapper.toProductDto(products);
     }
 
     @Transactional
@@ -48,6 +48,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product updatedProduct = ProductMapper.toProduct(updateProductRequest);
+
         return ProductMapper.toProductDto(productRepository.save(updatedProduct));
     }
 
@@ -65,12 +66,7 @@ public class ProductServiceImpl implements ProductService {
         UUID id = request.getProductId();
         QuantityState quantityState = request.getQuantityState();
         Product existProduct = checkProductExist(id);
-
-        // ⚠️ тут надо проверить бизнес-логику.
-        // Возможно, если quantityState == ENDED, а продукт есть в наличии, нужно ставить ENOUGH.
-        // Пока оставим прямую установку:
         existProduct.setQuantityState(quantityState);
-
         productRepository.save(existProduct);
     }
 
