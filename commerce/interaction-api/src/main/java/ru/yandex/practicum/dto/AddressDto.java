@@ -1,20 +1,18 @@
 package ru.yandex.practicum.dto;
 
-import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.NoArgsConstructor;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddressDto {
-
     String country;
-
     String city;
-
     String street;
-
     String house;
-
     String flat;
 }

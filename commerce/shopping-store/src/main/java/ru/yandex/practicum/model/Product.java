@@ -1,10 +1,8 @@
 package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.UuidGenerator;
 import ru.yandex.practicum.dto.ProductCategory;
 import ru.yandex.practicum.dto.ProductState;
 import ru.yandex.practicum.dto.QuantityState;
@@ -12,35 +10,28 @@ import ru.yandex.practicum.dto.QuantityState;
 import java.util.UUID;
 
 @Entity
-@Data
-@Table(name = "products", schema = "public")
+@Table(name = "products")
+@Getter
+@Setter
+@Builder(toBuilder = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@AllArgsConstructor
+@NoArgsConstructor
 public class Product {
-
     @Id
-    @UuidGenerator(style = UuidGenerator.Style.RANDOM)
-    @Column(name = "product_id")
+    @GeneratedValue(strategy = GenerationType.UUID)
     UUID productId;
-
     @Column(name = "name")
-    private String productName;
-
-    @Column(name = "description")
-    private String description;
-
-    @Column(name = "image_src")
-    private String imageSrc;
-
-    @Column(name = "quantity_state")
-    private QuantityState quantityState;
-
-    @Column(name = "product_state")
-    private ProductState productState;
-
-    @Column(name = "product_category")
-    private ProductCategory productCategory;
-
-    @Column(name = "price")
-    private Double price;
-
+    String productName;
+    String description;
+    String imageSrc;
+    @Enumerated(value = EnumType.STRING)
+    QuantityState quantityState;
+    @Enumerated(value = EnumType.STRING)
+    ProductState productState;
+    Double rating;
+    @Enumerated(value = EnumType.STRING)
+    @Column(name = "category")
+    ProductCategory productCategory;
+    Double price;
 }

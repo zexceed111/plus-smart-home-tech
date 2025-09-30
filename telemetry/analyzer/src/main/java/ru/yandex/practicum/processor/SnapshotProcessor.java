@@ -5,51 +5,89 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.springframework.stereotype.Service;
-import ru.yandex.practicum.handler.snapshot.SnapshotHandler;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
+import org.springframework.stereotype.Component;
+import ru.yandex.practicum.config.KafkaConsumerConfig;
+import ru.yandex.practicum.model.Scenario;
+import ru.yandex.practicum.service.AnalyzerService;
+import ru.yandex.practicum.service.HubEventService;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
-import ru.yandex.practicum.kafka_client.KafkaClient;
-import ru.yandex.practicum.kafka_client.KafkaProperties;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
 public class SnapshotProcessor implements Runnable {
+    private final Consumer<String, SensorsSnapshotAvro> consumer;
+    private final KafkaConsumerConfig kafkaConsumerConfig;
+    private final Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
+    private final AnalyzerService analyzerService;
+    private final HubEventService hubEventService;
 
-    private final KafkaClient kafkaClient;
-    private final KafkaProperties kafkaProperties;
-    private final SnapshotHandler snapshotHandler;
-    private final OffsetManager<SensorsSnapshotAvro> offsetManager;
 
     @Override
     public void run() {
-        log.info("Запущен SnapshotProcessor");
-        try (Consumer<String, SensorsSnapshotAvro> snapshotConsumer = kafkaClient.getSnapshotConsumer()) {
-
+        Runtime.getRuntime().addShutdownHook(new Thread(consumer::wakeup));
+        try {
+            consumer.subscribe(List.of(kafkaConsumerConfig.getKafkaConsumerProperties().getSensorSnapshotsTopic()));
             while (true) {
-                Long pollTimeout = kafkaProperties.getSnapshotConsumer().getPollTimeoutSec();
-                ConsumerRecords<String, SensorsSnapshotAvro> records = snapshotConsumer.poll(Duration.ofMillis(pollTimeout));
-
+                ConsumerRecords<String, SensorsSnapshotAvro> records = consumer
+                        .poll(Duration.ofMillis(kafkaConsumerConfig.getKafkaConsumerProperties()
+                                .getSnapshotConsumer().getAttemptTimeout()));
                 int count = 0;
                 for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
-                    handleRecord(record.value());
-                    offsetManager.manageOffsets(record, count, kafkaProperties.getSnapshotConsumer().getAutoCommitRecordCount(), snapshotConsumer);
+                    handleRecord(record);
+                    manageOffsets(record, count, consumer);
                     count++;
                 }
-                snapshotConsumer.commitAsync();
+                consumer.commitAsync();
             }
 
+        } catch (WakeupException ignores) {
+            // игнорируем - закрываем консьюмер и продюсер в блоке finally
         } catch (Exception e) {
-            log.error("Ошибка во время обработки снапшота в analyzer", e);
+            log.error("Ошибка во время обработки снимка состояния ", e);
+        } finally {
+
+            try {
+                consumer.commitSync(currentOffsets);
+
+            } finally {
+                log.info("Закрываем консьюмер");
+                consumer.close();
+            }
         }
     }
 
-    private void handleRecord(SensorsSnapshotAvro sensorsSnapshot) {
-        log.info("Обработка SensorSnapshot: {}", sensorsSnapshot);
-        snapshotHandler.handle(sensorsSnapshot);
-        log.info("Завершена обработка SensorSnapshot: {}", sensorsSnapshot);
+    private void handleRecord(ConsumerRecord<String, SensorsSnapshotAvro> consumerRecord) throws InterruptedException {
+        log.info("analyzer handleRecord {}", consumerRecord.value());
+        List<Scenario> scenarios = analyzerService.getScenariosBySnapshot(consumerRecord.value());
+        log.info("==> found scenarios for execute {}", scenarios.size());
+        for (Scenario scenario: scenarios) {
+            hubEventService.sendActionsByScenario(scenario);
+        }
     }
 
+    private void manageOffsets(ConsumerRecord<String, SensorsSnapshotAvro> consumerRecord,
+                               int count,
+                               Consumer<String, SensorsSnapshotAvro> consumer) {
+        currentOffsets.put(
+                new TopicPartition(consumerRecord.topic(), consumerRecord.partition()),
+                new OffsetAndMetadata(consumerRecord.offset() + 1)
+        );
+
+        if (count % 10 == 0) {
+            consumer.commitAsync(currentOffsets, (offsets, exception) -> {
+                if (exception != null) {
+                    log.warn("Ошибка во время фиксации оффсетов: {}", offsets, exception);
+                }
+            });
+        }
+    }
 }

@@ -2,6 +2,7 @@ package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 
@@ -9,31 +10,22 @@ import java.util.List;
 @Table(name = "conditions")
 @Getter
 @Setter
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Condition {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "type")
-    @Enumerated(EnumType.STRING)
-    private ConditionType type;
-
-    @Column(name = "operation")
-    @Enumerated(EnumType.STRING)
-    private ConditionOperation operation;
-
-    @Column(name = "value")
-    private Integer value;
-
+    Long id;
     @ManyToOne
     @JoinColumn(name = "sensor_id")
-    private Sensor sensor;
-
+    Sensor sensor;
+    @Enumerated(EnumType.STRING)
+    ConditionType type;
+    @Enumerated(EnumType.STRING)
+    ConditionOperation operation;
+    Integer value;
     @ManyToMany(mappedBy = "conditions")
-    private List<Scenario> scenarios;
-
+    List<Scenario> scenarios;
 }

@@ -1,83 +1,65 @@
 package ru.yandex.practicum.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import ru.yandex.practicum.client.ShoppingCartClient;
+import ru.yandex.practicum.dto.BookedProductsDto;
 import ru.yandex.practicum.dto.ChangeProductQuantityRequest;
 import ru.yandex.practicum.dto.ShoppingCartDto;
 import ru.yandex.practicum.service.ShoppingCartService;
+import ru.yandex.practicum.utils.ValidationUtil;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@Slf4j
+@Validated
 @RestController
+@RequestMapping("/api/v1/shopping-cart")
 @RequiredArgsConstructor
-@RequestMapping("${ShoppingCart.api.prefix}")
-public class ShoppingCartController {
-
+public class ShoppingCartController implements ShoppingCartClient {
     private final ShoppingCartService shoppingCartService;
 
-    @Value("${ShoppingCart.api.prefix}")
-    private String prefix;
-
-    @GetMapping
-    @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<ShoppingCartDto> getShoppingCarts(@RequestParam String username) {
-        log.info("Поступил запрос GET {} для пользователя {}", prefix, username);
-        ShoppingCartDto response = shoppingCartService.getShoppingCart(username);
-
-        if (response == null) {
-            response = new ShoppingCartDto();
-            response.setProducts(Map.of()); // пустая корзина
-        }
-
-        log.info("Сформирован ответ GET {}: {}", prefix, response);
-        return ResponseEntity.ok(response);
+    @Override
+    public ShoppingCartDto getCart(
+            @NotBlank(message = ValidationUtil.VALIDATION_USERNAME_MESSAGE) String userName) {
+        return shoppingCartService.getCart(userName);
     }
 
-
-    @PutMapping
-    @ResponseStatus(HttpStatus.OK)
-    public ShoppingCartDto addProductToShoppingCart(@RequestParam String username, @RequestBody Map<UUID, Long> products) {
-        log.info("Поступил запрос Put {} на добавление в корзину пользователя {} товаров: {}", prefix, username, products);
-        ShoppingCartDto response = shoppingCartService.addProductToShoppingCart(username, products);
-        log.info("Сформирован ответ Put {} с телом: {}", prefix, response);
-        return response;
+    @Override
+    public ShoppingCartDto addProducts(
+            @NotBlank(message = ValidationUtil.VALIDATION_USERNAME_MESSAGE) String userName,
+            Map<UUID, @NotNull Long> products) {
+        return shoppingCartService.addProducts(userName, products);
     }
 
-    @DeleteMapping
-    @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<Map<String, String>> deactivateShoppingCart(@RequestParam String username) {
-        log.info("Поступил запрос DELETE {} для пользователя {}", prefix, username);
-        shoppingCartService.deactivateCurrentShoppingCart(username);
-        log.info("Корзина пользователя {} деактивирована", username);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Корзина пользователя " + username + " деактивирована"
-        ));
+    @Override
+    public void clearCart(@NotBlank(message = ValidationUtil.VALIDATION_USERNAME_MESSAGE) String userName) {
+        shoppingCartService.clearCart(userName);
     }
 
-    @PostMapping("/remove")
-    @ResponseStatus(HttpStatus.OK)
-    public ShoppingCartDto removeProductFromShoppingCart(@RequestParam String username, @RequestBody List<UUID> productIds) {
-        log.info("Поступил запрос Post {}/remove на удаление из корзины пользователя {} товаров с UUID: {}", prefix, username, productIds);
-        ShoppingCartDto response = shoppingCartService.removeFromShoppingCart(username, productIds);
-        log.info("Сформирован ответ Post {}/remove с телом: {}", prefix, response);
-        return response;
+    @Override
+    public ShoppingCartDto removeProducts(@NotBlank(message = ValidationUtil.VALIDATION_USERNAME_MESSAGE)
+                                                      String userName,
+                                                  List<UUID> products) {
+        return shoppingCartService.removeProducts(userName, products);
     }
 
-    @PostMapping("/change-quantity")
-    @ResponseStatus(HttpStatus.OK)
-    public ShoppingCartDto changeProductQuantity(@RequestParam String username, @RequestBody ChangeProductQuantityRequest request) {
-        log.info("Поступил запрос Post {}/change-quantity на изменение кол-ва товаров с UUID = {} - {} шт. в корзине пользователя {}",
-                prefix, request.getProductId(), request.getNewQuantity(), username);
-        ShoppingCartDto response = shoppingCartService.changeProductQuantity(username, request);
-        log.info("Сформирован ответ Post {}/change-quantity с телом: {}", prefix, response);
-        return response;
+    @Override
+    public ShoppingCartDto updateQuantity(@NotBlank(message = ValidationUtil.VALIDATION_USERNAME_MESSAGE)
+                                                     String userName,
+                                                 @Valid ChangeProductQuantityRequest request) {
+        return shoppingCartService.updateQuantity(userName, request);
+    }
+
+    @Override
+    public BookedProductsDto bookProducts(
+            @NotBlank(message = ValidationUtil.VALIDATION_USERNAME_MESSAGE) String userName) {
+        return shoppingCartService.bookProducts(userName);
     }
 }

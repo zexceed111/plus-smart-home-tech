@@ -1,19 +1,19 @@
 package ru.yandex.practicum.dto;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChangeProductQuantityRequest {
-
-    @NotNull
+    @NotNull(message = "Product ID cannot be null")
     private UUID productId;
 
-    @NotNull
+    @NotNull(message = "Quantity cannot be null")
     private Long newQuantity;
 }

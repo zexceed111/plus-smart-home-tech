@@ -1,21 +1,19 @@
 package ru.yandex.practicum.dto;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 import java.util.UUID;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddProductToWarehouseRequest {
+    @NotNull(message = "Product ID must not be null")
+    private UUID productId;
 
-    @NotNull
-    UUID productId;
-
-    @NotNull
-    @Min(value = 1, message = "Количество добавляемого товара должно быть >= 1")
-    Long quantity;
+    @NotNull(message = "Quantity must not be null")
+    @Positive(message = "Quantity must be positive")
+    private Long quantity;
 }

@@ -1,37 +1,28 @@
-server:
-  port: 0
-
-ShoppingCart:
-  api:
-    prefix: /api/v1/shopping-cart # Префикс url ShoppingCartController
-
 spring:
-  datasource:
-    driverClassName: org.postgresql.Driver
-    username: dbuser
-    password: 12345
-    url: jdbc:postgresql://localhost:6544/shopping_cart
   jpa:
+    show-sql: true
     hibernate:
-      ddl-auto: none
-    properties:
-      hibernate:
-        format_sql: 'true'
-    show-sql: 'true'
+      dialect: org.hibernate.dialect.PostgreSQLDialect
   sql:
     init:
       mode: always
+  output:
+    ansi:
+      enabled: ALWAYS
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:6432/shopping_cart
+    username: commerce
+    password: commerce
 
-resilience4j.circuitbreaker:
-  configs:
-    default:
-      slidingWindowSize: 50
-      failureRateThreshold: 50
-  instances:
-    warehouse:
-      slidingWindowSize: 8
-      waitDurationInOpenState: 10000 # 10 секунд в миллисекундах
-      permittedNumberOfCallsInHalfOpenState: 3
-      slidingWindowType: COUNT_BASED
-      minimumNumberOfCalls: 1
-      automaticTransitionFromOpenToHalfOpenEnabled: true
+logging:
+  level:
+    "org.springframework.orm.jpa": INFO
+    "org.springframework.transaction": INFO
+    "org.springframework.transaction.interceptor": INFO
+    "org.springframework.orm.jpa.JpaTransactionManager": INFO
+    "org.hibernate.SQL": INFO
+    "org.hibernate.orm.jdbc.bind": INFO
+
+server:
+  port: 0

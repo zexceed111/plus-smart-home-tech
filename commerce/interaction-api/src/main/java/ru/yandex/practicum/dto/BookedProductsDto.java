@@ -1,16 +1,18 @@
 package ru.yandex.practicum.dto;
 
-import lombok.AccessLevel;
-import lombok.Data;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@AllArgsConstructor
+@NoArgsConstructor
 public class BookedProductsDto {
-
+    @PositiveOrZero(message = "Delivery weight must be positive or zero")
     Double deliveryWeight;
-
+    
+    @PositiveOrZero(message = "Delivery volume must be positive or zero")
     Double deliveryVolume;
-
-    boolean fragile;
+    
+    Boolean fragile;
 }

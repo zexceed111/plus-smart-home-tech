@@ -1,24 +1,22 @@
 package ru.yandex.practicum.dto;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DimensionDto {
-
-    @NotNull
-    @DecimalMin(value = "1", message = "Ширина товара должна быть >= 1")
-    Double width;
-
-    @NotNull
-    @DecimalMin(value = "1", message = "Высота товара должна быть >= 1")
-    Double height;
-
-    @NotNull
-    @DecimalMin(value = "1", message = "Глубина товара должна быть >= 1")
-    Double depth;
+    @NotNull(message = "Width must be specified")
+    @Positive(message = "Width must be positive")
+    private Double width;
+    
+    @NotNull(message = "Height must be specified")
+    @Positive(message = "Height must be positive")
+    private Double height;
+    
+    @NotNull(message = "Depth must be specified")
+    @Positive(message = "Depth must be positive")
+    private Double depth;
 }

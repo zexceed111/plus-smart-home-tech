@@ -1,19 +1,18 @@
 package ru.yandex.practicum.mapper;
 
-import ru.yandex.practicum.dto.AddNewProductInWarehouseRequest;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import ru.yandex.practicum.dto.NewProductInWarehouseRequest;
 import ru.yandex.practicum.model.WarehouseProduct;
 
-public class WarehouseMapper {
+@Mapper(componentModel = "spring",
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public interface WarehouseMapper {
 
-    public static WarehouseProduct toWarehouseProduct(AddNewProductInWarehouseRequest request) {
-        WarehouseProduct warehouseProduct = new WarehouseProduct();
-        warehouseProduct.setProductId(request.getProductId());
-        warehouseProduct.setFragile(request.isFragile());
-        warehouseProduct.setWeight(request.getWeight());
-        warehouseProduct.setHeight(request.getDimension().getHeight());
-        warehouseProduct.setDepth(request.getDimension().getDepth());
-        warehouseProduct.setWidth(request.getDimension().getWidth());
-        warehouseProduct.setQuantity(0L);
-        return warehouseProduct;
-    }
+    @Mapping(target = "width", source = "dimension.width")
+    @Mapping(target = "height", source = "dimension.height")
+    @Mapping(target = "depth", source = "dimension.depth")
+    @Mapping(target = "quantity", ignore = true)
+    WarehouseProduct map(NewProductInWarehouseRequest dto);
 }

@@ -4,136 +4,91 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.dto.*;
-import ru.yandex.practicum.exception.DuplicateProductException;
-import ru.yandex.practicum.exception.NotEnoughProductException;
-import ru.yandex.practicum.exception.NotFoundException;
-import ru.yandex.practicum.feign.ShoppingStoreClient;
+import ru.yandex.practicum.exception.NoSpecifiedProductInWarehouseException;
+import ru.yandex.practicum.exception.ProductInShoppingCartLowQuantityInWarehouse;
+import ru.yandex.practicum.exception.SpecifiedProductAlreadyInWarehouseException;
 import ru.yandex.practicum.mapper.WarehouseMapper;
 import ru.yandex.practicum.model.WarehouseProduct;
 import ru.yandex.practicum.repository.WarehouseRepository;
+import ru.yandex.practicum.utils.AddressUtil;
 
-import java.security.SecureRandom;
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class WarehouseServiceImpl implements WarehouseService {
-
     private final WarehouseRepository warehouseRepository;
-    private final ShoppingStoreClient shoppingStoreClient;
-
-    private static final String[] ADDRESSES = new String[]{"ADDRESS_1", "ADDRESS_2"};
-    private static final String CURRENT_ADDRESS = ADDRESSES[Random.from(new SecureRandom()).nextInt(0, 1)];
+    private final WarehouseMapper warehouseMapper;
 
     @Override
     @Transactional
-    public void newProductInWarehouse(AddNewProductInWarehouseRequest request) {
-        checkProductAlreadyExist(request.getProductId());
-        WarehouseProduct warehouseProduct = WarehouseMapper.toWarehouseProduct(request);
-        warehouseRepository.save(warehouseProduct);
-    }
-
-    @Override
-    public BookedProductsDto checkProductQuantityEnoughForShoppingCart(ShoppingCartDto cart) {
-        Map<UUID, Long> cartProductsMap = cart.getProducts();
-        List<WarehouseProduct> warehouseProducts = warehouseRepository.findAllById(cartProductsMap.keySet());
-        Map<UUID, Long> warehouseProductsMap = warehouseProducts.stream()
-                .collect(Collectors.toMap(WarehouseProduct::getProductId, WarehouseProduct::getQuantity));
-
-        List<String> exceptionMessages = cartProductsMap.entrySet()
-                .stream()
-                .filter(entry -> warehouseProductsMap.getOrDefault(entry.getKey(), 0L) < entry.getValue())
-                .map(entry -> String.format(
-                        "Недостаток товара с id = %s, не хватает %d шт.%n",
-                        entry.getKey(),
-                        entry.getValue() - warehouseProductsMap.getOrDefault(entry.getKey(), 0L)
-                ))
-                .toList();
-
-        if (!exceptionMessages.isEmpty()) {
-            throw new NotEnoughProductException(exceptionMessages.toString());
+    public void newProductInWarehouse(NewProductInWarehouseRequest request) {
+        if (warehouseRepository.existsById(request.getProductId())) {
+            throw new SpecifiedProductAlreadyInWarehouseException(
+                    "Ошибка, товар с таким описанием уже зарегистрирован на складе");
         }
-
-        return calculateDeliveryParams(warehouseProducts);
+        warehouseRepository.save(warehouseMapper.map(request));
     }
 
     @Override
     @Transactional
     public void addProductToWarehouse(AddProductToWarehouseRequest request) {
-        WarehouseProduct warehouseProduct = checkWarehouseProductExist(request.getProductId());
-        Long newQuantity = warehouseProduct.getQuantity() + request.getQuantity();
-        warehouseProduct.setQuantity(newQuantity);
-        warehouseRepository.save(warehouseProduct);
-        updateProductQuantityInShoppingStore(warehouseProduct);
+        WarehouseProduct product = getWarehouseProduct(request.getProductId());
+        long newQuantity = product.getQuantity() + request.getQuantity();
+        product.setQuantity(newQuantity);
+        warehouseRepository.save(product);
+    }
+
+    @Override
+    @Transactional
+    public BookedProductsDto checkProductQuantityEnoughForShoppingCart(ShoppingCartDto shoppingCartDto) {
+        Map<UUID, Long> cartProducts = shoppingCartDto.getProducts();
+        Map<UUID, WarehouseProduct> products = warehouseRepository.findAllById(cartProducts.keySet())
+                .stream()
+                .collect(Collectors.toMap(WarehouseProduct::getProductId, Function.identity()));
+        if (products.size() != cartProducts.size()) {
+            throw new ProductInShoppingCartLowQuantityInWarehouse("Некоторых товаров нет на складе");
+        }
+        double weight = 0;
+        double volume = 0;
+        boolean fragile = false;
+        for (Map.Entry<UUID, Long> cartProduct : cartProducts.entrySet()) {
+            WarehouseProduct product = products.get(cartProduct.getKey());
+            if (cartProduct.getValue() > product.getQuantity()) {
+                throw new ProductInShoppingCartLowQuantityInWarehouse(
+                        "Ошибка, товар из корзины не находится в требуемом количестве на складе");
+            }
+            weight += product.getWeight() * cartProduct.getValue();
+            volume += product.getHeight() * product.getWeight() * product.getDepth() * cartProduct.getValue();
+            fragile = fragile || product.isFragile();
+        }
+
+        return new BookedProductsDto(
+                weight,
+                volume,
+                fragile
+        );
     }
 
     @Override
     public AddressDto getWarehouseAddress() {
-        AddressDto addressDto = new AddressDto();
-        addressDto.setCountry(CURRENT_ADDRESS);
-        addressDto.setCity(CURRENT_ADDRESS);
-        addressDto.setStreet(CURRENT_ADDRESS);
-        addressDto.setHouse(CURRENT_ADDRESS);
-        addressDto.setFlat(CURRENT_ADDRESS);
-        return addressDto;
-    }
-
-    private void checkProductAlreadyExist(UUID productId) {
-        warehouseRepository.findById(productId).ifPresent(product ->
-                {
-                    throw new DuplicateProductException("Товар с id = " + productId + " уже представлен на складе");
-                }
+        String defValue = AddressUtil.getAddress();
+        return new AddressDto(
+                defValue,
+                defValue,
+                defValue,
+                defValue,
+                defValue
         );
     }
 
-    private BookedProductsDto calculateDeliveryParams(List<WarehouseProduct> warehouseProducts) {
-
-        BookedProductsDto bookedProductsDto = new BookedProductsDto();
-
-        double totalWeight = warehouseProducts.stream()
-                .mapToDouble(WarehouseProduct::getWeight)
-                .sum();
-
-        double totalVolume = warehouseProducts.stream()
-                .mapToDouble(product -> product.getWidth() * product.getHeight() * product.getDepth())
-                .sum();
-
-        boolean hasFragileProducts = warehouseProducts.stream()
-                .anyMatch(WarehouseProduct::isFragile);
-
-        bookedProductsDto.setDeliveryWeight(totalWeight);
-        bookedProductsDto.setDeliveryVolume(totalVolume);
-        bookedProductsDto.setFragile(hasFragileProducts);
-
-        return bookedProductsDto;
+    private WarehouseProduct getWarehouseProduct(UUID productId) {
+        return warehouseRepository.findById(productId).orElseThrow(
+                () -> new NoSpecifiedProductInWarehouseException("Нет информации о товаре на складе")
+        );
     }
-
-    private WarehouseProduct checkWarehouseProductExist(UUID productId) {
-        return warehouseRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Товар с id = " + productId + " отсутствует на складе"));
-    }
-
-    private void updateProductQuantityInShoppingStore(WarehouseProduct product) {
-        Long quantity = product.getQuantity();
-        QuantityState quantityState;
-
-        if (quantity == 0) {
-            quantityState = QuantityState.ENDED;
-        } else if (quantity < 10) {
-            quantityState = QuantityState.FEW;
-        } else if (quantity < 100) {
-            quantityState = QuantityState.ENOUGH;
-        } else {
-            quantityState = QuantityState.MANY;
-        }
-
-        SetProductQuantityStateRequest request = new SetProductQuantityStateRequest();
-        request.setProductId(product.getProductId());
-        request.setQuantityState(quantityState);
-
-        shoppingStoreClient.setProductQuantityState(request);
-    }
-
 }

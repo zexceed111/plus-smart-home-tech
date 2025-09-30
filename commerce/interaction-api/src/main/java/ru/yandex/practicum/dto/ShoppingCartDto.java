@@ -1,17 +1,18 @@
 package ru.yandex.practicum.dto;
 
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.*;
 
 import java.util.Map;
 import java.util.UUID;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ShoppingCartDto {
-
-    UUID shoppingCartId;
-
+    UUID id;
+    
+    @NotEmpty(message = "Products map cannot be empty")
     Map<UUID, Long> products;
 }

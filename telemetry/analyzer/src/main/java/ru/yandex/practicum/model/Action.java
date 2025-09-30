@@ -2,6 +2,7 @@ package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 
@@ -9,27 +10,20 @@ import java.util.List;
 @Table(name = "actions")
 @Getter
 @Setter
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Action {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "type")
-    @Enumerated(EnumType.STRING)
-    private ActionType type;
-
-    @Column(name = "value")
-    private Integer value;
-
+    Long id;
     @ManyToOne
     @JoinColumn(name = "sensor_id")
     Sensor sensor;
-
+    @Enumerated(EnumType.STRING)
+    ActionType type;
+    Integer value;
     @ManyToMany(mappedBy = "actions")
-    private List<Scenario> scenarios;
-
+    List<Scenario> scenarios;
 }

@@ -4,36 +4,26 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
-@Data
 @Entity
-@Table(name = "warehouse_products", schema = "public")
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Table(name = "warehouse_product")
+@Getter
+@Setter
+@Builder(toBuilder = true)
+@AllArgsConstructor
+@NoArgsConstructor
 public class WarehouseProduct {
-
     @Id
+    @Column(name = "product_id")
     UUID productId;
-
-    @Column(name = "weight")
-    double weight;
-
-    @Column(name = "width")
-    double width;
-
-    @Column(name = "height")
-    double height;
-
-    @Column(name = "depth")
-    double depth;
-
-    @Column(name = "fragile")
     boolean fragile;
-
-    @Column(name = "quantity")
-    Long quantity;
+    Double width;
+    Double height;
+    Double depth;
+    Double weight;
+    long quantity = 0L;
 }

@@ -2,17 +2,15 @@ package ru.yandex.practicum.handler.hub;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import ru.yandex.practicum.exception.NotFoundException;
-import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
-import ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.repository.ScenarioRepository;
+import ru.yandex.practicum.kafka.telemetry.event.*;
 
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
 public class ScenarioRemovedEventHandler implements HubEventHandler {
-
     private final ScenarioRepository scenarioRepository;
 
     @Override
@@ -20,16 +18,11 @@ public class ScenarioRemovedEventHandler implements HubEventHandler {
         return ScenarioRemovedEventAvro.class.getName();
     }
 
+    @Transactional
     @Override
-    public void handle(HubEventAvro event) {
-        ScenarioRemovedEventAvro scenarioRemovedEvent = (ScenarioRemovedEventAvro) event.getPayload();
-
-        if (scenarioRepository.findByHubIdAndName(event.getHubId(), scenarioRemovedEvent.getName()).isEmpty()) {
-            throw new NotFoundException("Не найден сценарий с name = " + scenarioRemovedEvent.getName() + " для hubId = " + event.getHubId());
-        }
-
-        scenarioRepository.deleteByNameAndHubId(scenarioRemovedEvent.getName(), event.getHubId());
-        log.info("Из БД удален scenario с name  = {}", scenarioRemovedEvent.getName());
+    public void handle(HubEventAvro hubEvent) {
+        String scenarioName = ((ScenarioRemovedEventAvro) hubEvent.getPayload()).getName();
+        log.info("Deleting scenario: {}", scenarioName);
+        scenarioRepository.deleteByHubIdAndName(hubEvent.getHubId(), scenarioName);
     }
-
 }

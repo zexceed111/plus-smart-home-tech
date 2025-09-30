@@ -1,19 +1,21 @@
 package ru.yandex.practicum.dto;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SetProductQuantityStateRequest {
-
-    @NotNull
-    UUID productId;
-
-    @NotNull
-    QuantityState quantityState;
+    @NotNull(message = "Product ID must not be null")
+    private UUID productId;
+    
+    @NotNull(message = "Quantity state must not be null")
+    private QuantityState quantityState;
 }
