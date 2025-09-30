@@ -123,7 +123,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             quantityState = QuantityState.ENDED;
         } else if (quantity < 10) {
             quantityState = QuantityState.FEW;
-        } else if (quantity < 100 && quantity > 10) {
+        } else if (quantity < 100) {
             quantityState = QuantityState.ENOUGH;
         } else {
             quantityState = QuantityState.MANY;
@@ -135,4 +135,5 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         shoppingStoreClient.setProductQuantityState(request);
     }
+
 }
