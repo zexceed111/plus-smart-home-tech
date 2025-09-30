@@ -13,7 +13,7 @@ public interface ProductMapper {
 
     Product map(ProductDto dto);
 
-    @Mapping(target = "productId", ignore = false)
+    @Mapping(target = "target", expression = "java(new java.util.ArrayList<>())")
     ProductDto map(Product entity);
 
     @Mapping(target = "productId", ignore = true)

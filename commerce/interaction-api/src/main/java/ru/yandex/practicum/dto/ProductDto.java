@@ -16,6 +16,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ProductDto {
     UUID productId;
+
+    List<Object> target = new ArrayList<>();
     
     @NotBlank(message = "Product name cannot be blank")
     String productName;
