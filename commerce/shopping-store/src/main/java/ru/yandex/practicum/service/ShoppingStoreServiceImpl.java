@@ -11,6 +11,8 @@ import ru.yandex.practicum.mapper.ProductMapper;
 import ru.yandex.practicum.model.Product;
 import ru.yandex.practicum.repository.ProductRepository;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,15 +33,17 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
                 .map(productMapper::map)
                 .toList();
 
+        // Защитная инициализация
         ProductsDto result = new ProductsDto();
-        result.setContent(list);
+        result.setContent(list != null ? list : new ArrayList<>()); // пустой список вместо null
         List<SortInfo> sortInfoList = pageRequest.getSort().stream()
                 .map(order -> new SortInfo(order.getProperty(), order.getDirection().name()))
-                .collect(Collectors.toList());
-        result.setSort(sortInfoList);
+                .toList();
+        result.setSort(sortInfoList != null ? sortInfoList : new ArrayList<>()); // тоже пустой список
 
         return result;
     }
+
 
     @Override
     public ProductDto getProductById(UUID productId) {
