@@ -8,6 +8,7 @@ import ru.yandex.practicum.client.ShoppingStoreClient;
 import ru.yandex.practicum.dto.*;
 import ru.yandex.practicum.service.ShoppingStoreService;
 
+import java.util.Collections;
 import java.util.UUID;
 
 @RestController
@@ -19,10 +20,17 @@ public class ShoppingStoreController implements ShoppingStoreClient {
 
     @GetMapping
     @Override
-    public ProductsDto getProducts(
-            @RequestParam @NotNull ProductCategory category, Pageable pageable) {
-        return shoppingStoreService.getProducts(category, pageable);
+    public ProductsDto getProducts(@RequestParam @NotNull ProductCategory category, Pageable pageable) {
+        ProductsDto result = shoppingStoreService.getProducts(category, pageable);
+        if (result.getContent() == null) {
+            result.setContent(Collections.emptyList());
+        }
+        if (result.getSort() == null) {
+            result.setSort(Collections.emptyList());
+        }
+        return result;
     }
+
 
     @GetMapping("/{productId}")
     @Override
