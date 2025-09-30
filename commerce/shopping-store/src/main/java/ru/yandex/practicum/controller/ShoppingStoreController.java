@@ -6,8 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.dto.*;
+import ru.yandex.practicum.exception.ApiError;
+import ru.yandex.practicum.exception.NotFoundException;
 import ru.yandex.practicum.feign.ShoppingStoreClient;
 import ru.yandex.practicum.service.ProductService;
 
@@ -64,18 +67,16 @@ public class ShoppingStoreController implements ShoppingStoreClient {
     @Override
     @PostMapping("/quantityState")
     @ResponseStatus(HttpStatus.OK)
-    public void setProductQuantityState(@Valid @RequestBody SetProductQuantityStateRequest request) {
-        log.info("Поступил запрос Post {}/quantityState на изменение количества Product с телом = {}", prefix, request);
-        productService.setProductQuantityState(request);
-        log.info("Выполнен запрос Post {}/quantityState на изменение количества Product с телом = {}", prefix, request);
-    }
-
-    @GetMapping("/{productId}")
-    @ResponseStatus(HttpStatus.OK)
-    public ProductDto getProducts(@PathVariable UUID productId) {
-        log.info("Поступил запрос Get {}/{} на получение ProductDto с id = {}", prefix, productId, productId);
-        ProductDto response = productService.getProduct(productId);
-        log.info("Сформирован ответ Get {}/{} с телом: {}", prefix, productId, response);
-        return response;
+    public ResponseEntity<?> setProductQuantityState(@Valid @RequestBody SetProductQuantityStateRequest request) {
+        try {
+            productService.setProductQuantityState(request);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError(HttpStatus.NOT_FOUND, e, "Товар не найден"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, e, "Неизвестная ошибка"));
+        }
     }
 }

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.dto.ChangeProductQuantityRequest;
 import ru.yandex.practicum.dto.ShoppingCartDto;
@@ -26,12 +27,19 @@ public class ShoppingCartController {
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public ShoppingCartDto getShoppingCarts(@RequestParam String username) {
-        log.info("Поступил запрос Get {} на получение ShoppingCartDto пользователя {}", prefix, username);
+    public ResponseEntity<ShoppingCartDto> getShoppingCarts(@RequestParam String username) {
+        log.info("Поступил запрос GET {} для пользователя {}", prefix, username);
         ShoppingCartDto response = shoppingCartService.getShoppingCart(username);
-        log.info("Сформирован ответ Get {} с телом: {}", prefix, response);
-        return response;
+
+        if (response == null) {
+            response = new ShoppingCartDto();
+            response.setProducts(Map.of()); // пустая корзина
+        }
+
+        log.info("Сформирован ответ GET {}: {}", prefix, response);
+        return ResponseEntity.ok(response);
     }
+
 
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
@@ -44,10 +52,14 @@ public class ShoppingCartController {
 
     @DeleteMapping
     @ResponseStatus(HttpStatus.OK)
-    public void deactivateShoppingCart(@RequestParam String username) {
-        log.info("Поступил запрос Delete {} на деактивацию корзины пользователя {}", prefix, username);
+    public ResponseEntity<Map<String, String>> deactivateShoppingCart(@RequestParam String username) {
+        log.info("Поступил запрос DELETE {} для пользователя {}", prefix, username);
         shoppingCartService.deactivateCurrentShoppingCart(username);
-        log.info("Обработан запрос Delete {} на деактивацию корзины пользователя {}", prefix, username);
+        log.info("Корзина пользователя {} деактивирована", username);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Корзина пользователя " + username + " деактивирована"
+        ));
     }
 
     @PostMapping("/remove")
