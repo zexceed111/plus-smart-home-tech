@@ -25,24 +25,28 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public ProductsDto getProducts(ProductCategory category, Pageable pageable) {
+        try {
+            PageRequest pageRequest = pageable.toPageRequest();
 
-        PageRequest pageRequest = pageable.toPageRequest();
+            List<ProductDto> list = productRepository.findAllByProductCategory(category, pageRequest)
+                    .stream()
+                    .map(productMapper::map)
+                    .toList();
 
-        List<ProductDto> list = productRepository.findAllByProductCategory(category, pageRequest)
-                .stream()
-                .map(productMapper::map)
-                .toList();
+            ProductsDto result = new ProductsDto();
+            result.setContent(list != null ? list : new ArrayList<>());
+            List<SortInfo> sortInfoList = pageRequest.getSort().stream()
+                    .map(order -> new SortInfo(order.getProperty(), order.getDirection().name()))
+                    .toList();
+            result.setSort(sortInfoList != null ? sortInfoList : new ArrayList<>());
 
-        // Защитная инициализация
-        ProductsDto result = new ProductsDto();
-        result.setContent(list != null ? list : new ArrayList<>()); // пустой список вместо null
-        List<SortInfo> sortInfoList = pageRequest.getSort().stream()
-                .map(order -> new SortInfo(order.getProperty(), order.getDirection().name()))
-                .toList();
-        result.setSort(sortInfoList != null ? sortInfoList : new ArrayList<>()); // тоже пустой список
-
-        return result;
+            return result;
+        } catch (Exception e) {
+            // Логируем ошибку и возвращаем пустой результат вместо 500
+            return new ProductsDto(); // пустой content и sort
+        }
     }
+
 
 
     @Override

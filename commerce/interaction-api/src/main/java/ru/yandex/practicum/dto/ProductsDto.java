@@ -13,6 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductsDto {
-    private List<ProductDto> content = new ArrayList<>(); // <- по умолчанию пустой список
-    private List<SortInfo> sort = new ArrayList<>();     // <- тоже пустой список по умолчанию
+    private List<ProductDto> content = new ArrayList<>();
+    private List<SortInfo> sort = new ArrayList<>();
 }
+
