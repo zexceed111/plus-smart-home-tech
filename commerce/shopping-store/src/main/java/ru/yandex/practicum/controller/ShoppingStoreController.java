@@ -20,15 +20,9 @@ public class ShoppingStoreController implements ShoppingStoreClient {
 
     @GetMapping
     @Override
-    public ProductsDto getProducts(@RequestParam @NotNull ProductCategory category, Pageable pageable) {
-        ProductsDto result = shoppingStoreService.getProducts(category, pageable);
-        if (result.getContent() == null) {
-            result.setContent(Collections.emptyList());
-        }
-        if (result.getSort() == null) {
-            result.setSort(Collections.emptyList());
-        }
-        return result;
+    public ProductsDto getProducts(
+            @RequestParam @NotNull ProductCategory category, Pageable pageable) {
+        return shoppingStoreService.getProducts(category, pageable);
     }
 
 
