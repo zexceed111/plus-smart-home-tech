@@ -6,7 +6,6 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.dto.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @FeignClient(name = "shopping-store")
@@ -30,7 +29,8 @@ public interface ShoppingStoreClient {
     @PostMapping(REMOVE_PATH)
     void removeProduct(@RequestBody UUID productId);
 
+    // ИСПРАВЛЕННЫЙ МЕТОД - используем @RequestParam вместо @PathVariable
     @PostMapping(QUANTITY_STATE_PATH)
-    ProductDto updateQuantityState(@PathVariable UUID productId,
-                                   @PathVariable QuantityState quantity);
+    ProductDto updateQuantityState(@RequestParam UUID productId,
+                                   @RequestParam QuantityState quantityState);
 }

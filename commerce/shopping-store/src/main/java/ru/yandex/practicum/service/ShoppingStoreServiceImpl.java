@@ -1,7 +1,6 @@
 package ru.yandex.practicum.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -26,27 +25,15 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public ProductsDto getProducts(ProductCategory category, Pageable pageable) {
+        PageRequest pageRequest = pageable.toPageRequest();
 
-        // Ограничиваем максимальный размер страницы
-        int pageSize = Math.min(pageable.getSize(), 200);
-        PageRequest pageRequest = PageRequest.of(
-                pageable.getPage(),  // используем getPage() вместо getPageNumber()
-                pageSize,
-                pageable.toPageRequest().getSort()  // получаем Sort из PageRequest
-        );
-
-        Page<Product> productPage = (Page<Product>) productRepository.findAllByProductCategory(category, pageRequest);
-
-        ProductsDto result = new ProductsDto();
-
-        // Всегда устанавливаем content
-        List<ProductDto> list = productPage.getContent()
+        List<ProductDto> list = productRepository.findAllByProductCategory(category, pageRequest)
                 .stream()
                 .map(productMapper::map)
                 .toList();
-        result.setContent(list);
 
-        // Преобразуем сортировку
+        ProductsDto result = new ProductsDto();
+        result.setContent(list);
         List<SortInfo> sortInfoList = pageRequest.getSort().stream()
                 .map(order -> new SortInfo(order.getProperty(), order.getDirection().name()))
                 .collect(Collectors.toList());
@@ -54,6 +41,8 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
         return result;
     }
+
+
 
     @Override
     public ProductDto getProductById(UUID productId) {
