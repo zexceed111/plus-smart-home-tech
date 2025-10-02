@@ -16,7 +16,11 @@ public interface ShoppingStoreClient {
     String QUANTITY_STATE_PATH = "/quantityState";
 
     @GetMapping(BASE_PATH)
-    ProductsDto getProducts(@RequestParam @NotNull ProductCategory category, Pageable pageable);
+    ProductsDto getProducts(@RequestParam @NotNull ProductCategory category,
+                            @RequestParam(defaultValue = "0") int page,
+                            @RequestParam(defaultValue = "100") int size,
+                            @RequestParam(required = false) List<String> sort);
+
 
     @GetMapping("/{productId}")
     ProductDto getProduct(@PathVariable UUID productId);
@@ -31,6 +35,6 @@ public interface ShoppingStoreClient {
     void removeProduct(@RequestBody UUID productId);
 
     @PostMapping(QUANTITY_STATE_PATH)
-    ProductDto updateQuantityState(@PathVariable UUID productId,
-                                   @PathVariable QuantityState quantity);
+    ProductDto updateQuantityState(@RequestParam UUID productId,
+                                   @RequestParam QuantityState quantityState);
 }

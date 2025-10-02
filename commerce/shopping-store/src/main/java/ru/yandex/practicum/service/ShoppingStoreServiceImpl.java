@@ -25,7 +25,6 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public ProductsDto getProducts(ProductCategory category, Pageable pageable) {
-
         PageRequest pageRequest = pageable.toPageRequest();
 
         List<ProductDto> list = productRepository.findAllByProductCategory(category, pageRequest)
@@ -33,17 +32,16 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
                 .map(productMapper::map)
                 .toList();
 
-        ProductsDto result = new ProductsDto();
-        result.setContent(list);
         List<SortInfo> sortInfoList = pageRequest.getSort().stream()
                 .map(order -> new SortInfo(order.getProperty(), order.getDirection().name()))
                 .collect(Collectors.toList());
-        result.setSort(sortInfoList);
+
+        ProductsDto result = new ProductsDto();
+        result.setContent(list != null ? list : Collections.emptyList());
+        result.setSort(sortInfoList != null ? sortInfoList : Collections.emptyList());
 
         return result;
     }
-
-
 
     @Override
     public ProductDto getProductById(UUID productId) {
