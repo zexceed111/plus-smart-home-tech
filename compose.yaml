@@ -4,8 +4,8 @@ services:
     hostname: kafka
     container_name: kafka
     ports:
-      - "9092:9092" # for client connections
-      - "9101:9101" # JMX
+      - "9092:9092"
+      - "9101:9101"
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -34,22 +34,44 @@ services:
                              --bootstrap-server kafka:29092'"
     init: true
 
-  db:
-    image: postgres:16.1
-    container_name: postgres-analyzer
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.3
+    container_name: schema-registry
+    depends_on:
+      - kafka
     ports:
-      - "6542:5432"
-    volumes:
-      - ./telemetry/analyzer/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-      - ./telemetry/analyzer/src/main/resources/db:/var/lib/postgresql/data
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
+      - "8081:8081"
     environment:
-      - POSTGRES_DB=analyzer
-      - POSTGRES_USER=dbuser
-      - POSTGRES_PASSWORD=12345
-    healthcheck:
-      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
-      timeout: 5s
-      interval: 5s
-      retries: 10
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+
+  shopping-store-db:
+    image: postgres:16.1
+    container_name: shopping-store-db
+    ports:
+      - "7432:5432"
+    environment:
+      POSTGRES_DB: shopping_store_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  shopping-cart-db:
+    image: postgres:16.1
+    container_name: shopping-cart-db
+    ports:
+      - "8432:5432"
+    environment:
+      POSTGRES_DB: shopping_cart_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  warehouse-db:
+    image: postgres:16.1
+    container_name: warehouse-db
+    ports:
+      - "9432:5432"
+    environment:
+      POSTGRES_DB: warehouse_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres

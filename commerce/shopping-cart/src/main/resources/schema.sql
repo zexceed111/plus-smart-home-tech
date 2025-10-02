@@ -1,12 +1,17 @@
-CREATE TABLE IF NOT EXISTS cart (
-    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_name        varchar(200) NOT NULL
+DROP TABLE IF EXISTS cart_products CASCADE;
+DROP TABLE IF EXISTS shopping_cart CASCADE;
+
+CREATE TABLE shopping_cart (
+    shopping_cart_id UUID PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    state VARCHAR(25) CHECK (state IN ('ACTIVE', 'DEACTIVATED'))
 );
 
-CREATE TABLE IF NOT EXISTS cart_products (
-    cart_id          UUID NOT NULL,
-    product_id       UUID NOT NULL,
-    quantity         BIGINT,
-    CONSTRAINT cart_products_pk PRIMARY KEY (cart_id, product_id),
-    CONSTRAINT cart_products_cart_fk FOREIGN KEY (cart_id) REFERENCES cart(id) ON DELETE CASCADE
+CREATE TABLE cart_products (
+    shopping_cart_shopping_cart_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    quantity BIGINT,
+    PRIMARY KEY (shopping_cart_shopping_cart_id, product_id),
+    CONSTRAINT fk_cart_products_cart FOREIGN KEY (shopping_cart_shopping_cart_id)
+        REFERENCES shopping_cart (shopping_cart_id)
 );
