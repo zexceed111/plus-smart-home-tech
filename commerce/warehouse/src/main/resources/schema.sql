@@ -1,10 +1,11 @@
-CREATE TABLE IF NOT EXISTS warehouse_products
-(
+DROP TABLE IF EXISTS warehouse_product CASCADE;
+
+CREATE TABLE warehouse_product (
     product_id UUID PRIMARY KEY,
-    fragile    BOOLEAN,
-    width      DOUBLE PRECISION,
-    height     DOUBLE PRECISION,
-    depth      DOUBLE PRECISION,
-    weight     DOUBLE PRECISION,
-    quantity   BIGINT
+    depth DOUBLE PRECISION,
+    height DOUBLE PRECISION,
+    width DOUBLE PRECISION,
+    fragile BOOLEAN NOT NULL,
+    quantity BIGINT NOT NULL,
+    weight DOUBLE PRECISION NOT NULL
 );

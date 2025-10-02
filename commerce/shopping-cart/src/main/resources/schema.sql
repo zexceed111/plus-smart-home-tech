@@ -1,15 +1,17 @@
-CREATE TABLE IF NOT EXISTS carts
-(
-    cart_id   UUID PRIMARY KEY,
-    user_name VARCHAR,
-    state     VARCHAR
+DROP TABLE IF EXISTS cart_products CASCADE;
+DROP TABLE IF EXISTS shopping_cart CASCADE;
+
+CREATE TABLE shopping_cart (
+    shopping_cart_id UUID PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    state VARCHAR(25) CHECK (state IN ('ACTIVE', 'DEACTIVATED'))
 );
 
-CREATE TABLE IF NOT EXISTS cart_products
-(
-    cart_id    UUID,
-    product_id UUID,
-    quantity   BIGINT,
-    CONSTRAINT cart_products_pk PRIMARY KEY (cart_id, product_id),
-    CONSTRAINT cart_products_cart_fk FOREIGN KEY (cart_id) REFERENCES carts (cart_id)
+CREATE TABLE cart_products (
+    shopping_cart_shopping_cart_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    quantity BIGINT,
+    PRIMARY KEY (shopping_cart_shopping_cart_id, product_id),
+    CONSTRAINT fk_cart_products_cart FOREIGN KEY (shopping_cart_shopping_cart_id)
+        REFERENCES shopping_cart (shopping_cart_id)
 );
