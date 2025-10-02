@@ -7,7 +7,9 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "actions")
-@Getter @Setter @NoArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
 public class Action {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
