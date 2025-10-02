@@ -25,6 +25,7 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public ProductsDto getProducts(ProductCategory category, Pageable pageable) {
+
         PageRequest pageRequest = pageable.toPageRequest();
 
         List<ProductDto> list = productRepository.findAllByProductCategory(category, pageRequest)
