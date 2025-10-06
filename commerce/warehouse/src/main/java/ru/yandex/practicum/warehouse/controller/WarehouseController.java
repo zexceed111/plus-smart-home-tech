@@ -8,11 +8,13 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.yandex.practicum.interaction.client.WarehouseClient;
 import ru.yandex.practicum.warehouse.dto.AddProductToWarehouseRequest;
 import ru.yandex.practicum.warehouse.dto.AddressDto;
-import ru.yandex.practicum.warehouse.dto.BookedProductsDto;
+import ru.yandex.practicum.common.dto.AssemblyRequest;
+import ru.yandex.practicum.common.dto.BookedProductsDto;
 import ru.yandex.practicum.warehouse.dto.NewProductInWarehouseRequest;
+import ru.yandex.practicum.warehouse.dto.ReturnRequest;
+import ru.yandex.practicum.warehouse.dto.ShipmentRequest;
 import ru.yandex.practicum.warehouse.dto.ShoppingCartDto;
 import ru.yandex.practicum.warehouse.service.WarehouseService;
 
@@ -20,7 +22,7 @@ import ru.yandex.practicum.warehouse.service.WarehouseService;
 @RestController
 @RequestMapping("/api/v1/warehouse")
 @RequiredArgsConstructor
-public class WarehouseController implements WarehouseClient {
+public class WarehouseController {
 
     private final WarehouseService service;
 
@@ -68,5 +70,20 @@ public class WarehouseController implements WarehouseClient {
         log.info("Warehouse address resolved: country={}, city={}, street={}, house={}, flat={}",
                 address.getCountry(), address.getCity(), address.getStreet(), address.getHouse(), address.getFlat());
         return address;
+    }
+
+    @PostMapping("/assembly")
+    public BookedProductsDto assemble(@RequestBody AssemblyRequest request) {
+        return service.assembleProducts(request);
+    }
+
+    @PostMapping("/shipped")
+    public void markAsShipped(@RequestBody ShipmentRequest request) {
+        service.markAsShipped(request);
+    }
+
+    @PostMapping("/return")
+    public void returnProducts(@RequestBody ReturnRequest request) {
+        service.returnProducts(request);
     }
 }

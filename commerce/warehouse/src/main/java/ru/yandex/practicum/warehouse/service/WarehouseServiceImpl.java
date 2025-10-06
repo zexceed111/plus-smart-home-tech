@@ -5,23 +5,30 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.warehouse.dto.AddProductToWarehouseRequest;
 import ru.yandex.practicum.warehouse.dto.AddressDto;
-import ru.yandex.practicum.warehouse.dto.BookedProductsDto;
+import ru.yandex.practicum.common.dto.AssemblyRequest;
+import ru.yandex.practicum.common.dto.BookedProductsDto;
 import ru.yandex.practicum.warehouse.dto.DimensionDto;
 import ru.yandex.practicum.warehouse.dto.NewProductInWarehouseRequest;
+import ru.yandex.practicum.warehouse.dto.OrderBooking;
+import ru.yandex.practicum.warehouse.dto.ReturnRequest;
+import ru.yandex.practicum.warehouse.dto.ShipmentRequest;
 import ru.yandex.practicum.warehouse.dto.ShoppingCartDto;
 import ru.yandex.practicum.warehouse.model.Dimension;
 import ru.yandex.practicum.warehouse.model.WarehouseProduct;
 import ru.yandex.practicum.warehouse.repository.WarehouseProductRepository;
 
 import java.security.SecureRandom;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseProductRepository repository;
+    private final Map<UUID, OrderBooking> bookings = new HashMap<>();
 
     private static final String[] ADDRESSES = {"ADDRESS_1", "ADDRESS_2"};
     private static String currentAddress;
@@ -106,5 +113,44 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public AddressDto getWarehouseAddress() {
         return new AddressDto(currentAddress, currentAddress, currentAddress, currentAddress, currentAddress);
+    }
+
+    @Override
+    public BookedProductsDto assembleProducts(AssemblyRequest request) {
+        Map<UUID, Long> converted = request.getProducts().entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().longValue()
+                ));
+
+        ShoppingCartDto cart = new ShoppingCartDto();
+        cart.setProducts(converted);
+
+        BookedProductsDto booked = checkAvailabilityAndBook(cart);
+
+        bookings.put(request.getOrderId(), new OrderBooking(request.getOrderId(), null, converted));
+
+        return booked;
+    }
+
+    @Override
+    public void markAsShipped(ShipmentRequest request) {
+        OrderBooking booking = bookings.get(request.getOrderId());
+        if (booking == null) {
+            throw new IllegalArgumentException("No booking found for order " + request.getOrderId());
+        }
+        booking.setDeliveryId(request.getDeliveryId());
+        System.out.println("Order " + request.getOrderId() + " marked as shipped with delivery " + request.getDeliveryId());
+    }
+
+    @Override
+    public void returnProducts(ReturnRequest request) {
+        for (Map.Entry<UUID, Integer> entry : request.getProducts().entrySet()) {
+            WarehouseProduct product = repository.findById(entry.getKey())
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + entry.getKey()));
+            product.setQuantity(product.getQuantity() + entry.getValue());
+            repository.save(product);
+        }
+        System.out.println("Products returned for order: " + request.getOrderId());
     }
 }

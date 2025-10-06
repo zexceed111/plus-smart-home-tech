@@ -12,6 +12,10 @@ spring:
       discovery:
         enabled: true
         serviceId: config-server
+    gateway:
+      discovery:
+        locator:
+          enabled: false
 
 eureka:
   client:
@@ -22,3 +26,17 @@ eureka:
     hostname: localhost
     instance-id: "${spring.application.name}:${random.value}"
     leaseRenewalIntervalInSeconds: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: gateway,health,info
+  endpoint:
+    gateway:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty.http.client: DEBUG
