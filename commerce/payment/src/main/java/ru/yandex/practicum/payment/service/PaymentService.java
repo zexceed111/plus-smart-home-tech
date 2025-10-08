@@ -2,6 +2,7 @@ package ru.yandex.practicum.payment.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.interaction.client.OrderClient;
 import ru.yandex.practicum.interaction.client.ShoppingStoreClient;
 import ru.yandex.practicum.common.dto.OrderDto;
@@ -42,6 +43,7 @@ public class PaymentService {
         return productCost.add(vat).add(delivery);
     }
 
+    @Transactional
     public PaymentDto createPayment(OrderDto order) {
         BigDecimal productCost = calculateProductCost(order);
         BigDecimal delivery = order.getDeliveryPrice() != null ? order.getDeliveryPrice() : BigDecimal.valueOf(50);
@@ -59,6 +61,7 @@ public class PaymentService {
         return mapper.toDto(repository.save(entity));
     }
 
+    @Transactional
     public void markSuccess(UUID paymentId) {
         PaymentEntity payment = repository.findByPaymentId(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
@@ -67,6 +70,7 @@ public class PaymentService {
         repository.save(payment);
     }
 
+    @Transactional
     public void markFailed(UUID paymentId) {
         PaymentEntity payment = repository.findByPaymentId(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.shoppingstore.dto.ProductDto;
 import ru.yandex.practicum.shoppingstore.mapper.ProductMapper;
 import ru.yandex.practicum.shoppingstore.model.Product;
@@ -34,6 +35,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
     public ProductDto createProduct(ProductDto productDto) {
         Product product = mapper.toEntity(productDto);
 
@@ -46,6 +48,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
     public ProductDto updateProduct(ProductDto productDto) {
         if (productDto.getProductId() == null || !repository.existsById(productDto.getProductId())) {
             throw new IllegalArgumentException("Product not found");
@@ -55,6 +58,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
     public boolean removeProductFromStore(UUID productId) {
         return repository.findById(productId).map(product -> {
             product.setProductState(ProductState.DEACTIVATE);
@@ -64,6 +68,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
     public boolean updateProductQuantityState(SetProductQuantityStateRequest request) {
         return repository.findById(request.getProductId()).map(product -> {
             product.setQuantityState(request.getQuantityState());

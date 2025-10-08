@@ -87,6 +87,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         repository.save(cart);
     }
 
+    @Transactional
     private ShoppingCart findOrCreateCart(String username) {
         return repository.findByUsername(username).orElseGet(() -> {
             ShoppingCart cart = ShoppingCart.builder()

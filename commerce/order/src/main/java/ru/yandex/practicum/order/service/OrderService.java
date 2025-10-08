@@ -2,6 +2,7 @@ package ru.yandex.practicum.order.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.delivery.dto.DeliveryDto;
 import ru.yandex.practicum.interaction.client.DeliveryClient;
 import ru.yandex.practicum.interaction.client.PaymentClient;
@@ -14,7 +15,6 @@ import ru.yandex.practicum.order.mapper.OrderMapper;
 import ru.yandex.practicum.order.repository.OrderRepository;
 import ru.yandex.practicum.common.dto.AssemblyRequest;
 import ru.yandex.practicum.payment.dto.PaymentDto;
-
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,6 +31,7 @@ public class OrderService {
     private final PaymentClient paymentClient;
     private final WarehouseClient warehouseClient;
 
+    @Transactional
     public OrderDto createOrder(OrderDto dto) {
         OrderEntity entity = mapper.fromDto(dto);
         entity.setState(OrderState.NEW);
@@ -38,16 +39,19 @@ public class OrderService {
         return mapper.toDto(saved);
     }
 
+    @Transactional(readOnly = true)
     public List<OrderDto> getOrdersByCartId(UUID cartId) {
         return repository.findAllByShoppingCartId(cartId).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public OrderDto getById(UUID id) {
         return repository.findById(id).map(mapper::toDto).orElse(null);
     }
 
+    @Transactional
     public OrderDto markAsAssembled(UUID orderId) {
         OrderEntity order = getOrder(orderId);
 
@@ -62,12 +66,14 @@ public class OrderService {
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto markAssemblyFailed(UUID orderId) {
         OrderEntity order = getOrder(orderId);
         order.setState(OrderState.ASSEMBLY_FAILED);
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto markAsPaid(UUID orderId) {
         OrderEntity order = getOrder(orderId);
 
@@ -78,6 +84,7 @@ public class OrderService {
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto markPaymentFailed(UUID orderId) {
         OrderEntity order = getOrder(orderId);
         paymentClient.paymentFailed(order.getPaymentId());
@@ -85,6 +92,7 @@ public class OrderService {
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto markAsDelivered(UUID orderId) {
         OrderEntity order = getOrder(orderId);
 
@@ -95,6 +103,7 @@ public class OrderService {
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto markDeliveryFailed(UUID orderId) {
         OrderEntity order = getOrder(orderId);
         deliveryClient.markFailed(orderId);
@@ -102,14 +111,17 @@ public class OrderService {
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto markAsCompleted(UUID orderId) {
         return mapper.toDto(changeStatus(orderId, OrderState.COMPLETED));
     }
 
+    @Transactional
     public OrderDto markAsReturned(UUID orderId) {
         return mapper.toDto(changeStatus(orderId, OrderState.PRODUCT_RETURNED));
     }
 
+    @Transactional
     public OrderDto calculateDelivery(UUID orderId) {
         OrderEntity order = getOrder(orderId);
         BigDecimal cost = deliveryClient.deliveryCost(mapper.toDto(order));
@@ -117,6 +129,7 @@ public class OrderService {
         return mapper.toDto(repository.save(order));
     }
 
+    @Transactional
     public OrderDto calculateTotal(UUID orderId) {
         OrderEntity order = getOrder(orderId);
 

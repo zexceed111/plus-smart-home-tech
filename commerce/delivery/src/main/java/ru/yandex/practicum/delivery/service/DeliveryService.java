@@ -2,6 +2,7 @@ package ru.yandex.practicum.delivery.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.delivery.dto.DeliveryDto;
 import ru.yandex.practicum.warehouse.dto.ShipmentRequest;
 import ru.yandex.practicum.delivery.entity.DeliveryEntity;
@@ -23,6 +24,7 @@ public class DeliveryService {
     private final OrderClient orderClient;
     private final WarehouseClient warehouseClient;
 
+    @Transactional
     public DeliveryDto createDelivery(DeliveryDto dto) {
         DeliveryEntity entity = mapper.fromDto(dto);
         entity.setDeliveryStatus(DeliveryStatus.CREATED);
@@ -52,6 +54,7 @@ public class DeliveryService {
         return BigDecimal.valueOf(Math.round(cost * 100.0) / 100.0);
     }
 
+    @Transactional
     public DeliveryDto markPicked(UUID orderId) {
         DeliveryEntity delivery = getByOrder(orderId);
         delivery.setDeliveryStatus(DeliveryStatus.IN_PROGRESS);
@@ -62,6 +65,7 @@ public class DeliveryService {
         return mapper.toDto(repository.save(delivery));
     }
 
+    @Transactional
     public DeliveryDto markDelivered(UUID orderId) {
         DeliveryEntity delivery = getByOrder(orderId);
         delivery.setDeliveryStatus(DeliveryStatus.DELIVERED);
@@ -71,6 +75,7 @@ public class DeliveryService {
         return mapper.toDto(repository.save(delivery));
     }
 
+    @Transactional
     public DeliveryDto markFailed(UUID orderId) {
         DeliveryEntity delivery = getByOrder(orderId);
         delivery.setDeliveryStatus(DeliveryStatus.FAILED);

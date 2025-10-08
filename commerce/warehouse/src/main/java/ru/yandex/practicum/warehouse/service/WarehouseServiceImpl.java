@@ -3,6 +3,7 @@ package ru.yandex.practicum.warehouse.service;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.warehouse.dto.AddProductToWarehouseRequest;
 import ru.yandex.practicum.warehouse.dto.AddressDto;
 import ru.yandex.practicum.common.dto.AssemblyRequest;
@@ -40,8 +41,8 @@ public class WarehouseServiceImpl implements WarehouseService {
         currentAddress = ADDRESSES[i];
     }
 
-
     @Override
+    @Transactional
     public void registerNewProduct(NewProductInWarehouseRequest request) {
         if (repository.existsById(request.getProductId())) {
             throw new IllegalStateException("Product already exists on warehouse");
@@ -66,6 +67,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    @Transactional
     public void addProductQuantity(AddProductToWarehouseRequest request) {
         WarehouseProduct product = repository.findById(request.getProductId())
                 .orElseThrow(() -> new IllegalStateException("Product not found"));
@@ -74,6 +76,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    @Transactional
     public BookedProductsDto checkAvailabilityAndBook(ShoppingCartDto cart) {
         double totalWeight = 0;
         double totalVolume = 0;
@@ -116,6 +119,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    @Transactional
     public BookedProductsDto assembleProducts(AssemblyRequest request) {
         Map<UUID, Long> converted = request.getProducts().entrySet().stream()
                 .collect(Collectors.toMap(
@@ -134,6 +138,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    @Transactional
     public void markAsShipped(ShipmentRequest request) {
         OrderBooking booking = bookings.get(request.getOrderId());
         if (booking == null) {
@@ -144,6 +149,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    @Transactional
     public void returnProducts(ReturnRequest request) {
         for (Map.Entry<UUID, Integer> entry : request.getProducts().entrySet()) {
             WarehouseProduct product = repository.findById(entry.getKey())
