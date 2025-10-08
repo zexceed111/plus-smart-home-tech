@@ -66,31 +66,33 @@ public class PaymentService {
         return mapper.toDto(repository.save(entity));
     }
 
-    @Transactional
+    // Переносим логику взаимодействия с другими сервисами вне транзакции
+
     public void markSuccess(UUID paymentId) {
-        // Находим сущность платежа по ID
+        // Сначала выполняем все операции с базой данных внутри транзакции
         PaymentEntity payment = repository.findByPaymentId(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Платеж не найден"));
-
-        // Отправляем уведомление о успешном платеже
-        orderClient.paymentSuccess(payment.getOrderId());
 
         // Обновляем статус платежа на SUCCESS
         payment.setStatus(PaymentStatus.SUCCESS);
         repository.save(payment);  // Сохраняем обновленную сущность платежа
+
+        // После того как транзакция завершена, выходим и выполняем вызов внешнего сервиса
+        // (позволяет избежать отката в случае ошибки HTTP)
+        orderClient.paymentSuccess(payment.getOrderId());
     }
 
-    @Transactional
     public void markFailed(UUID paymentId) {
-        // Находим сущность платежа по ID
+        // Сначала выполняем все операции с базой данных внутри транзакции
         PaymentEntity payment = repository.findByPaymentId(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Платеж не найден"));
-
-        // Отправляем уведомление о неудачном платеже
-        orderClient.paymentFailed(payment.getOrderId());
 
         // Обновляем статус платежа на FAILED
         payment.setStatus(PaymentStatus.FAILED);
         repository.save(payment);  // Сохраняем обновленную сущность платежа
+
+        // После того как транзакция завершена, выходим и выполняем вызов внешнего сервиса
+        // (позволяет избежать отката в случае ошибки HTTP)
+        orderClient.paymentFailed(payment.getOrderId());
     }
 }
