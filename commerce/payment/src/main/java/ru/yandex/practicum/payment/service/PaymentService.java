@@ -24,58 +24,73 @@ public class PaymentService {
     private final OrderClient orderClient;
     private final ShoppingStoreClient storeClient;
 
+    // Вычисление общей стоимости всех продуктов в заказе
     public BigDecimal calculateProductCost(OrderDto order) {
         return order.getProducts().entrySet().stream()
                 .map(entry -> {
-                    UUID productId = entry.getKey();
-                    int quantity = entry.getValue();
-                    BigDecimal price = storeClient.getProduct(productId).getPrice();
-                    return price.multiply(BigDecimal.valueOf(quantity));
+                    UUID productId = entry.getKey();  // Получаем ID продукта
+                    int quantity = entry.getValue();  // Получаем количество продукта
+                    BigDecimal price = storeClient.getProduct(productId).getPrice();  // Получаем цену продукта
+                    return price.multiply(BigDecimal.valueOf(quantity));  // Умножаем цену на количество, чтобы получить стоимость этого продукта
                 })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);  // Суммируем стоимость всех продуктов
     }
 
+    // Вычисление общей стоимости заказа с учетом НДС и доставки
     public BigDecimal calculateTotalCost(OrderDto order) {
-        BigDecimal productCost = calculateProductCost(order);
-        BigDecimal vat = productCost.multiply(BigDecimal.valueOf(0.10));
-        BigDecimal delivery = order.getDeliveryPrice() != null ? order.getDeliveryPrice() : BigDecimal.valueOf(50);
+        BigDecimal productCost = calculateProductCost(order);  // Вычисляем стоимость продуктов
+        BigDecimal vat = productCost.multiply(BigDecimal.valueOf(0.10));  // Вычисляем НДС (10% от стоимости продуктов)
+        BigDecimal delivery = order.getDeliveryPrice() != null ? order.getDeliveryPrice() : BigDecimal.valueOf(50);  // Используем указанную цену доставки или значение по умолчанию (50)
 
-        return productCost.add(vat).add(delivery);
+        return productCost.add(vat).add(delivery);  // Возвращаем сумму стоимости продуктов, НДС и доставки
     }
 
     @Transactional
     public PaymentDto createPayment(OrderDto order) {
+        // Вычисляем стоимость продуктов, НДС и общую стоимость для заказа
         BigDecimal productCost = calculateProductCost(order);
         BigDecimal delivery = order.getDeliveryPrice() != null ? order.getDeliveryPrice() : BigDecimal.valueOf(50);
         BigDecimal vat = productCost.multiply(BigDecimal.valueOf(0.10));
         BigDecimal total = productCost.add(vat).add(delivery);
 
+        // Создаем новую сущность платежа с вычисленными стоимостями
         PaymentEntity entity = PaymentEntity.builder()
                 .orderId(order.getOrderId())
                 .productCost(productCost)
                 .deliveryCost(delivery)
                 .totalCost(total)
-                .status(PaymentStatus.PENDING)
+                .status(PaymentStatus.PENDING)  // Статус по умолчанию — PENDING
                 .build();
 
+        // Сохраняем сущность платежа в репозитории и возвращаем её в виде DTO
         return mapper.toDto(repository.save(entity));
     }
 
     @Transactional
     public void markSuccess(UUID paymentId) {
+        // Находим сущность платежа по ID
         PaymentEntity payment = repository.findByPaymentId(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Платеж не найден"));
+
+        // Отправляем уведомление о успешном платеже
         orderClient.paymentSuccess(payment.getOrderId());
+
+        // Обновляем статус платежа на SUCCESS
         payment.setStatus(PaymentStatus.SUCCESS);
-        repository.save(payment);
+        repository.save(payment);  // Сохраняем обновленную сущность платежа
     }
 
     @Transactional
     public void markFailed(UUID paymentId) {
+        // Находим сущность платежа по ID
         PaymentEntity payment = repository.findByPaymentId(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Платеж не найден"));
+
+        // Отправляем уведомление о неудачном платеже
         orderClient.paymentFailed(payment.getOrderId());
+
+        // Обновляем статус платежа на FAILED
         payment.setStatus(PaymentStatus.FAILED);
-        repository.save(payment);
+        repository.save(payment);  // Сохраняем обновленную сущность платежа
     }
 }
