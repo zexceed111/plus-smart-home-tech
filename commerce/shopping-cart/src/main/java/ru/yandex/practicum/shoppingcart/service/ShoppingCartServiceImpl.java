@@ -9,7 +9,7 @@ import ru.yandex.practicum.shoppingcart.dto.ShoppingCartDto;
 import ru.yandex.practicum.shoppingcart.model.ShoppingCart;
 import ru.yandex.practicum.shoppingcart.model.ShoppingCartState;
 import ru.yandex.practicum.shoppingcart.repository.ShoppingCartRepository;
-import ru.yandex.practicum.warehouse.dto.BookedProductsDto;
+import ru.yandex.practicum.common.dto.BookedProductsDto;
 
 import java.util.HashMap;
 import java.util.List;
@@ -87,6 +87,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         repository.save(cart);
     }
 
+    @Transactional
     private ShoppingCart findOrCreateCart(String username) {
         return repository.findByUsername(username).orElseGet(() -> {
             ShoppingCart cart = ShoppingCart.builder()
